@@ -1,0 +1,5 @@
+NuevaMente es una aplicacion que recibe documentacion tecnica en PDF, Markdown
+o texto plano, la indexa mediante RAG y genera contenido educativo adaptado a
+un perfil especifico. El sistema calcula un score de fidelidad para verificar
+que el contenido generado este anclado al documento original antes de
+entregarlo al usuario.
