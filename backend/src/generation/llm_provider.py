@@ -1,8 +1,9 @@
-"""Contrato del proveedor de LLM (COMP-06) + implementaciones futuras.
+"""Contrato del proveedor de LLM (COMP-06) + implementaciones.
 
 DT-09: Gemini propuesto (🔴 bloqueante, no confirmado formalmente — Plan
 Técnico Fase 10/20). El resto del pipeline solo depende de `LLMProvider`,
-nunca de un SDK concreto (RNF-005).
+nunca de un SDK concreto (RNF-005). El modo mock es determinista y sin red,
+para que el vertical slice funcione sin credenciales (TESTING_STRATEGY).
 """
 from typing import Protocol
 
@@ -16,8 +17,6 @@ class LLMProvider(Protocol):
         Lanza:
             LLMProviderError: ante timeout, error de API o cuota agotada
                 (Fase 14 — timeout sugerido 30s, 1 reintento).
-
-        Implementación futura.
         """
         ...
 
@@ -34,7 +33,12 @@ class GeminiLLMProvider:
 
 
 class MockLLMProvider:
-    """Implementación futura en modo mock, determinista, sin red."""
+    """Implementación determinista en modo mock, sin red.
+
+    No produce texto real: eco estructurado del prompt recortado. Es el
+    proveedor por defecto (`settings.LLM_PROVIDER=mock`) para desarrollo,
+    tests y CI sin API key.
+    """
 
     def generate(self, prompt: str, temperature: float = 0.3) -> str:
-        ...
+        return f"[mock:{temperature:.1f}] " + prompt[:400]

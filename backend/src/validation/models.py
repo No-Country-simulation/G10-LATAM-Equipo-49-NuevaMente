@@ -1,5 +1,6 @@
 """Modelos de dominio de Validation (COMP-07). Fuente: RF-014, DT-05."""
 from typing import Literal
+
 from pydantic import BaseModel
 
 Veredicto = Literal["SI", "NO", "PARCIAL"]

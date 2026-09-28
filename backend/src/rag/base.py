@@ -1,5 +1,6 @@
 """Contrato del servicio de retrieval (COMP-05)."""
 from typing import Protocol
+
 from src.vectorstore.base import VectorStoreMatch
 
 

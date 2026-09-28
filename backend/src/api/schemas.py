@@ -5,6 +5,7 @@ contienen lógica; son composición de los schemas de dominio ya definidos
 en `output/schema.py`, `db/models.py`, etc.
 """
 from typing import Literal
+
 from pydantic import BaseModel
 
 FileType = Literal["pdf", "md", "txt"]

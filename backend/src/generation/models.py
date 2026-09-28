@@ -4,6 +4,7 @@ Fuente: RF-009..RF-013 (adaptación por perfil/formato/nicho/detalle) y
 Fase 6 (`ContenidoAdaptado`, reutilizado también por `output/schema.py`).
 """
 from typing import Literal
+
 from pydantic import BaseModel
 
 # Los 4 perfiles y ≥2 formatos MVP están definidos en `profiles.py` — aquí

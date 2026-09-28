@@ -10,7 +10,8 @@ Nota de diseño: los validadores quedan como firma únicamente (sin lógica),
 igual que el resto del repositorio en esta fase CONTRACT-ONLY.
 """
 from typing import Literal
-from pydantic import BaseModel, field_validator
+
+from pydantic import BaseModel, Field, field_validator
 
 Status = Literal["SUCCESS", "PARTIAL", "NO_CONTEXT", "ERROR"]
 
@@ -20,6 +21,52 @@ class Source(BaseModel):
 
     chunk_id: str
     page: int | None = None
+
+
+class ItemFlashcard(BaseModel):
+    tipo: Literal["flashcard"] = "flashcard"
+    frente: str
+    dorso: str
+    pista_didactica: str
+
+
+class ItemQuiz(BaseModel):
+    tipo: Literal["quiz"] = "quiz"
+    pregunta: str
+    opciones: list[str]
+    respuesta_correcta: str
+    justificacion: str
+
+
+class ItemTutorial(BaseModel):
+    tipo: Literal["tutorial"] = "tutorial"
+    paso: int
+    titulo_paso: str
+    instrucciones: str
+    codigo_ejemplo: str | None = None
+
+
+class ItemResumen(BaseModel):
+    tipo: Literal["resumen"] = "resumen"
+    punto_clave: str
+    detalle: str
+
+
+class ItemGuion(BaseModel):
+    tipo: Literal["guion"] = "guion"
+    seccion: str
+    narracion: str
+    apoyo_visual: str | None = None
+
+
+ItemContenido = ItemFlashcard | ItemQuiz | ItemTutorial | ItemResumen | ItemGuion
+"""Items tipados por formato pedagógico (GEN-002, GEN-006/GEN-007).
+
+Extensión al contrato de Fase 6: `cuerpo` es la representación plana;
+`items` conserva la variante tipada por formato (flashcards, quiz, tutorial,
+resumen, guion) que el plan prevé para satisfacer el vertical slice de la
+arquitectura. Documentado en docs/TRACEABILITY.md.
+"""
 
 
 class Metadatos(BaseModel):
@@ -36,6 +83,7 @@ class ContenidoAdaptado(BaseModel):
     conceptos_clave: list[str] = []
     prerrequisitos: list[str] = []
     tiempo_estimado_min: int | None = None
+    items: list[ItemContenido] = Field(default_factory=list)
 
 
 class EvaluacionCalidad(BaseModel):
@@ -51,8 +99,10 @@ class EvaluacionCalidad(BaseModel):
     @field_validator("fidelidad_score")
     @classmethod
     def score_en_rango(cls, value: float | None) -> float | None:
-        """Debe exigir `0 <= value <= 1` cuando no es `None`. Implementación futura."""
-        ...
+        """Exige `0 <= value <= 1` cuando no es `None` (VAL-005 / RF-014)."""
+        if value is not None and not (0.0 <= value <= 1.0):
+            raise ValueError("fidelidad_score debe estar en [0, 1] o ser None (VAL-005)")
+        return value
 
 
 class AlmacenamientoOCI(BaseModel):

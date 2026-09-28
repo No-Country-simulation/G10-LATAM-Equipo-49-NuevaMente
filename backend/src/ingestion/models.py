@@ -4,6 +4,7 @@ Contratos de entrada/salida usados por `router.py` y los extractores.
 Fuente: Plan Técnico, COMP-01 (Fase 5) y RF-001..RF-004.
 """
 from typing import Literal
+
 from pydantic import BaseModel
 
 FileType = Literal["pdf", "md", "txt"]

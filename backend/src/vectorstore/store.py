@@ -1,6 +1,6 @@
 """Persistencia de embeddings en el Vector Store (BE-RAG-007)."""
-from src.vectorstore.base import VectorStore
 from src.processing.models import DocumentChunk
+from src.vectorstore.base import VectorStore
 
 
 class ChromaVectorStore:

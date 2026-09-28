@@ -7,6 +7,9 @@ por defecto. NO ejecuta la carga real del .env en tiempo de importación
 Fuente: Plan Técnico, Fase 6 ("Variables de configuración") y Fase 7
 (FND-003, EPIC-01).
 """
+from functools import lru_cache
+
+from dotenv import load_dotenv
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -28,6 +31,7 @@ class Settings(BaseSettings):
     # Processing — TASK-002 (RF-005)
     CHUNK_SIZE: int = 800
     CHUNK_OVERLAP: int = 150
+    MAX_DOCUMENT_CHARS: int = 2_000_000  # PROC-005 — umbral de "documento demasiado grande"
 
     # RAG — BE-RAG-009/010
     RETRIEVAL_TOP_K: int = 5
@@ -51,8 +55,9 @@ class Settings(BaseSettings):
     # OCI Object Storage — DT-07, REQ-18
     OCI_CONFIG_FILE: str = "~/.oci/config"
     OCI_PROFILE: str = "DEFAULT"
-    OCI_BUCKET_NAME: str = "nuevamente-g10"
+    OCI_BUCKET_NAME: str = "bucket-20260921-2152-nuevamente-docs-test"
     OCI_NAMESPACE: str | None = None
+    OCI_PREFIX: str = ""
 
     # Persistencia de sesión — DT-08
     DATABASE_URL: str = "sqlite:///./data/sqlite/nuevamente.db"
@@ -64,11 +69,13 @@ class Settings(BaseSettings):
     )
 
 
+@lru_cache
 def get_settings() -> Settings:
-    """Contrato de acceso a la configuración cacheada.
+    """Acceso cacheado a la configuración.
 
-    Implementación futura: debe cachear la instancia (p. ej. `lru_cache`)
-    para no releer el `.env` en cada llamada. No se implementa aquí — este
-    archivo es CONTRACT-ONLY.
+    Lee el `.env` una única vez (FND-003: "carga real lectura de .env,
+    cacheo") vía `lru_cache` y las variables de entorno. En pruebas se
+    puede resetear con `get_settings.cache_clear()`.
     """
-    ...
+    load_dotenv()
+    return Settings()

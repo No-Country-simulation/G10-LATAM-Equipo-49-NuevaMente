@@ -1,31 +1,41 @@
 """Orquestador de ingesta (BE-ING-001, COMP-01).
 
-Responsabilidad (Fase 5): recibir el archivo, detectar su tipo, delegar en
-el extractor correspondiente, validar tamaño y devolver un `IngestResult`
-con un `document_id` nuevo. NO sube a OCI (eso es `storage/upload.py`,
-invocado por `api/orchestrator.py`, no por este módulo — mantener COMP-01
-y COMP-09 desacoplados, RNF-005).
+Recibe el archivo, detecta su tipo, delega en el extractor correspondiente,
+valida tamaño y devuelve un `IngestResult` con un `document_id` nuevo. NO
+sube a OCI (eso es `storage/upload.py`, invocado por `api/orchestrator.py`).
 """
+import os
+
+from src.ingestion.md_extractor import extract_markdown_text
 from src.ingestion.models import IngestResult
+from src.ingestion.pdf_extractor import extract_pdf_text
+from src.ingestion.txt_extractor import extract_txt_text
+from src.ingestion.validators import detect_type, validate_size
 
 
 class IngestionRouter:
     """Punto de entrada único de la capa de ingesta."""
 
     def ingest(self, filename: str, content: bytes) -> IngestResult:
-        """Valida, detecta el tipo y extrae el texto de `content`.
+        """Valida, detecta el tipo y extrae el texto de `content`."""
+        validate_size(content)
+        file_type = detect_type(filename)
 
-        Pasos previstos (implementación futura):
-            1. `validators.validate_size(content)`
-            2. `validators.detect_type(filename)`
-            3. Delegar en el extractor correspondiente
-               (`pdf_extractor` | `md_extractor` | `txt_extractor`)
-            4. Generar un `document_id` único
-            5. Construir y devolver `IngestResult`
+        if file_type == "pdf":
+            raw, pages = extract_pdf_text(content)
+        else:
+            raw = (
+                extract_markdown_text(content)
+                if file_type == "md"
+                else extract_txt_text(content)
+            )
+            pages = []
 
-        Lanza:
-            InvalidFileError, ScannedPdfError — ver cada extractor/validador.
-
-        Implementación futura.
-        """
-        ...
+        document_id = os.urandom(12).hex()
+        return IngestResult(
+            document_id=document_id,
+            file_type=file_type,
+            raw_text=raw,
+            pages=pages,
+            filename=filename,
+        )
