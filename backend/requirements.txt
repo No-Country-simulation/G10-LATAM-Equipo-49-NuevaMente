@@ -1,5 +1,32 @@
+# Declarativo — FND-002. Instalar cuando comience la implementación real.
+# No se ejecuta ninguna instalación ni servicio en la fase CONTRACT-ONLY.
+
 fastapi
 uvicorn[standard]
+python-multipart
+
 pydantic>=2
-python-dotenv
+pydantic-settings
+
+streamlit
+httpx
+
+pypdf
+# pdfplumber   # fallback si PyPDF no extrae texto (DT-04)
+
+langchain-text-splitters
+chromadb
+
+# google-genai   # DT-09 — proveedor 🔴 pendiente de confirmación formal
+
 oci
+
+python-dotenv
+tenacity
+structlog
+
+pytest
+pytest-asyncio
+pytest-cov
+
+ruff

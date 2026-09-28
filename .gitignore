@@ -1,12 +1,21 @@
+.venv/
+venv/
+__pycache__/
+*.pyc
+
 .env
 .env.*
 !.env.example
 
-__pycache__/
-*.py[cod]
 .pytest_cache/
-.venv/
-venv/
-
+.ruff_cache/
+.coverage
 data/
+data/chroma/
+data/sqlite/
+data/mock_oci/
+
+.idea/
+.vscode/
+*.log
 *.pem
