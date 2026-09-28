@@ -1,0 +1,14 @@
+.venv/
+venv/
+__pycache__/
+*.pyc
+.env
+.pytest_cache/
+.ruff_cache/
+.coverage
+data/chroma/
+data/sqlite/
+data/mock_oci/
+.idea/
+.vscode/
+*.log
