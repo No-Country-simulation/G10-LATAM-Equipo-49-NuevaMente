@@ -1,0 +1,181 @@
+{
+  "name": "NuevaMente v1",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "nuevamente-adaptar",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "0bd76ec4-0dba-4d52-9d9f-4947b0c8dc1a",
+      "name": "Webhook",
+      "webhookId": "56347a51-e123-4ca7-bf03-b8704172f091"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:8000/adaptar",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"documento_titulo\": \"Prueba VCN\",\n  \"documento_contenido\": \"La Virtual Cloud Network es una red privada y personalizable configurada en Oracle Cloud Infrastructure con subredes publicas y privadas, tablas de enrutamiento, Internet Gateways, NAT Gateways y Security Lists para control de trafico de entrada y salida.\",\n  \"perfil_destinatario\": \"Principiante\",\n  \"formato_salida\": \"Flashcards\",\n  \"nicho_sector\": \"General\",\n  \"nivel_detalle\": \"Didactico\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        208,
+        0
+      ],
+      "id": "d3044919-24c2-4e87-89c2-17666baf553e",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "64aba1ff-1d5f-4bed-8db8-7953842e6750",
+              "leftValue": "={{ $json.evaluacion_calidad.anclaje_fuente_score }}",
+              "rightValue": 0.9,
+              "operator": {
+                "type": "number",
+                "operation": "gte"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        416,
+        0
+      ],
+      "id": "6babf43c-9974-483e-96ae-5284a9e468bd",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        624,
+        -96
+      ],
+      "id": "9c4da8e3-cd16-4f7e-9ff1-ddb373a0e364",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={ \"status\":\"error\",\"codigo\":\"FIDELIDAD_BAJA\",\"mensaje_amigable\":\"El contenido no superó el control de fidelidad con la fuente. Reintenta con otro fragmento o formato.\" }",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        624,
+        96
+      ],
+      "id": "db691d6e-f122-4904-9583-df29a4ea4531",
+      "name": "Respond to Webhook1"
+    }
+  ],
+  "pinData": {
+    "Webhook": [
+      {
+        "json": {
+          "headers": {
+            "host": "localhost:5678",
+            "user-agent": "curl/8.21.0",
+            "accept": "*/*",
+            "content-type": "application/json",
+            "content-length": "606"
+          },
+          "params": {},
+          "query": {},
+          "body": {
+            "documento_titulo": "Introduccion a la Arquitectura de Redes VCN en OCI",
+            "documento_contenido": "La Virtual Cloud Network (VCN) es una red privada y personalizable configurada en Oracle Cloud Infrastructure. Similar a una red de centro de datos tradicional, la VCN ofrece control total sobre su entorno de red, incluyendo subredes publicas y privadas, tablas de enrutamiento, Internet Gateways, NAT Gateways y Security Lists para control de trafico mediante reglas de entrada y salida.",
+            "perfil_destinatario": "Principiante",
+            "formato_salida": "Flashcards",
+            "nicho_sector": "General",
+            "nivel_detalle": "Didactico"
+          },
+          "webhookUrl": "http://localhost:5678/webhook-test/nuevamente-adaptar",
+          "executionMode": "test"
+        }
+      }
+    ]
+  },
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond to Webhook1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "fe65db61-fd6b-450c-8195-63124c030c9b",
+  "meta": {
+    "instanceId": "758fc4015d7e76bfcfa019df7ff27559a266c60db3d788f9849cf4e85cf2f0c7"
+  },
+  "id": "JMKFdaBoGbfnUwF8",
+  "tags": []
+}
