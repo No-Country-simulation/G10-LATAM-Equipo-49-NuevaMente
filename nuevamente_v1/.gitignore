@@ -12,3 +12,5 @@ data/mock_oci/
 .idea/
 .vscode/
 *.log
+*.pem
+data/
