@@ -84,19 +84,6 @@ tests — ver `backend/tests/TESTING_STRATEGY.md`), no crea commits ni
 ejecuta comandos Git. Es una fase previa a la implementación, no la
 implementación.
 
-## 👥 Equipo (heredado del Plan Técnico, Fase 10 — pendiente de
-   reconciliación formal, ver `docs/architecture.md` sección 8)
-
-| Rol | Integrante |
-|-----|------------|
-| Orquestación / Backend / Arquitectura | Rodrigo Reyes |
-| Cloud/Backend Engineer (OCI) | Pedro Orozco |
-| Backend Developer | Miguel Ángel De La Cruz Lazaro |
-| Backend Developer | Fernando Manuel Enciso |
-| Software Engineer (Foundation) | Osvaldo Acosta |
-| Frontend/UX/QA | Viviana Hurtado, Jose Eduardo Chávez |
-| Scrum Lead | Diana Ocaña Martínez |
-
 ## 🏆 Requisitos y decisiones técnicas
 
 Clasificación completa (REQ-01..24, DIF-01..11) y decisiones técnicas
