@@ -1,4 +1,4 @@
-# NuevaMente — Arquitectura y Contratos 
+# NuevaMente  
 
 > Sistema Inteligente de Adaptación y Generación de Contenido Educativo
 > Hackathon ONE · Grupo 10 · NoCountry × Oracle Cloud Infrastructure
