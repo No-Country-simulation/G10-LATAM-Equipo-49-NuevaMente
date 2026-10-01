@@ -3,15 +3,6 @@
 > Sistema Inteligente de Adaptación y Generación de Contenido Educativo
 > Hackathon ONE · Grupo 10 · NoCountry × Oracle Cloud Infrastructure
 
-**Este repositorio NO es el MVP implementado.** Es la arquitectura y los
-contratos que le permitirán a otro desarrollador implementar el MVP:
-estructura de directorios, interfaces (`Protocol`), schemas Pydantic,
-firmas de función, configuración declarativa y documentación de
-trazabilidad. Ningún archivo contiene lógica de negocio ejecutable, ni
-llama a Gemini, OCI, ChromaDB o SQLite. Ver [`docs/AUDIT.md`](docs/AUDIT.md)
-para la clasificación de cada archivo (CONTRACT / PLACEHOLDER /
-DOCUMENTATION / CONFIGURATION).
-
 ## 🎯 Problema que resuelve NuevaMente
 
 La documentación técnica es densa y única para todas las audiencias.
@@ -76,15 +67,3 @@ nuevamente-g10/
 5. [`docs/AUDIT.md`](docs/AUDIT.md) — verificación de que ningún archivo
    de este repositorio quedó como implementación funcional.
 
-## 🚫 Qué NO hace este repositorio
-
-No instala dependencias reales, no ejecuta `uvicorn` ni `streamlit`, no se
-conecta a Gemini/OCI/ChromaDB/SQLite, no corre tests (`pytest` recolecta 0
-tests — ver `backend/tests/TESTING_STRATEGY.md`), no crea commits ni
-ejecuta comandos Git. Es una fase previa a la implementación, no la
-implementación.
-
-## 🏆 Requisitos y decisiones técnicas
-
-Clasificación completa (REQ-01..24, DIF-01..11) y decisiones técnicas
-DT-01..DT-11: ver `docs/architecture.md` y `docs/TRACEABILITY.md`.
