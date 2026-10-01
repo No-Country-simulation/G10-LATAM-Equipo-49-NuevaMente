@@ -9,7 +9,6 @@ from pydantic import BaseModel, Field, model_validator
 PerfilDestinatario = Literal["Principiante", "Junior", "Arquitecto", "Ejecutivo"]
 FormatoSalida      = Literal["Tutorial", "Flashcards", "Quiz", "TLDR", "Guion"]
 NichoSector        = Literal["Fintech", "Salud", "E-commerce", "General"]
-NivelDetalle       = Literal["Didactico", "Tecnico", "Estrategico"]
 
 # ───────────── 2. ENTRADA (Solicitud) ─────────────
 class SolicitudAdaptacion(BaseModel):
@@ -19,8 +18,7 @@ class SolicitudAdaptacion(BaseModel):
     perfil_destinatario: PerfilDestinatario
     formato_salida: FormatoSalida
     nicho_sector: NichoSector = "General"
-    nivel_detalle: NivelDetalle = "Didactico"
-
+   
 # ───────────── 3. ITEMS POR FORMATO PEDAGÓGICO ─────────────
 class ItemFlashcard(BaseModel):
     tipo: Literal["flashcard"] = "flashcard"
