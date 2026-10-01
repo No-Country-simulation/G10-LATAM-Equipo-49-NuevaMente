@@ -50,6 +50,74 @@ nuevamente-g10/
 ├── CONTRIBUTING.md
 └── data/                          # gitignored — estado local futuro
 ```
+## BACKEND
+> La adaptación (`/adapt`) funciona en **modo mock**: cita fragmentos reales del documento,
+> pero todavía no usa inteligencia artificial.
+
+## Requisito
+Python **3.11 o superior** (en Windows, marcar "Add python.exe to PATH" al instalarlo).
+
+## Encender la API (2 pasos)
+
+| Paso | Windows | Mac / Linux |
+|---|---|---|
+| 1. Instalar (una sola vez) | `setup.bat` | `./setup.sh` |
+| 2. Encender la API | `run_api.bat` | `./run_api.sh` |
+
+- API: http://127.0.0.1:8000
+- Documentación interactiva (probar desde el navegador): http://127.0.0.1:8000/docs
+- No hace falta crear `.env`: todo funciona con los valores por defecto.
+- Prueba rápida por consola (con la API encendida): `./demo.sh`
+
+Manual, sin scripts:
+```bash
+python -m venv .venv
+source .venv/bin/activate          # Windows: .venv\Scripts\activate
+pip install -r backend/requirements.txt
+cd backend
+python -m uvicorn src.api.main:app --host 127.0.0.1 --port 8000
+```
+
+## Endpoints
+
+| Endpoint | Qué hace | Respuesta |
+|---|---|---|
+| `GET /health` | ¿Está viva la API? | `200 {"status":"ok"}` |
+| `POST /ingest` (campo `file`) | Sube un PDF/MD/TXT | `201` con `document_id` y resumen |
+| `POST /adapt` (JSON) | Pide la adaptación | `202` con `job_id` |
+| `GET /adapt/{job_id}` | Consulta el resultado | `200` resultado · `202` en proceso · `404` no existe |
+
+```bash
+curl -F "file=@ejemplos/sample_contenedores.md" http://127.0.0.1:8000/ingest
+curl -X POST http://127.0.0.1:8000/adapt -H "Content-Type: application/json" \
+  -d '{"document_id":"doc_...","perfil":"principiante","formato":"tutorial"}'
+curl http://127.0.0.1:8000/adapt/job_...
+```
+
+Opciones de `/adapt`: perfil `principiante · developer · lider_tecnico · ejecutivo`;
+formato `tutorial · resumen_ejecutivo`; `nivel_detalle` `breve · estandar · profundo` (opcional).
+
+Errores: siempre `{"error": {"code": "...", "message": "..."}}`.
+
+| Código | HTTP | Cuándo |
+|---|---|---|
+| `INVALID_FILE` | 400 | Tipo no soportado, vacío, > 10 MB, PDF dañado o con contraseña |
+| `SCANNED_PDF` | 400 | PDF sin texto seleccionable (escaneado) |
+| `DOCUMENT_TOO_LARGE` | 400 | Texto demasiado largo |
+| `INVALID_REQUEST` | 400 / 422 | Perfil/formato/nivel desconocido o cuerpo mal formado |
+| `DOCUMENT_NOT_FOUND` / `JOB_NOT_FOUND` | 404 | Id inexistente |
+| `STORAGE_ERROR` | 502 | Falla el almacenamiento |
+
+## Estructura
+```
+backend/src/
+  api/         endpoints y coordinación         ingestion/   leer PDF/MD/TXT
+  processing/  limpieza y fragmentación         storage/     guardar archivos (local u OCI)
+  generation/  adaptación mock + catálogo       output/      formato de la respuesta
+  db/          base de datos SQLite             core/        configuración, errores, logs
+ejemplos/      documento de prueba              data/        datos locales (se crea solo)
+```
+
 
 ## 📖 Empezar a leer por aquí
 
