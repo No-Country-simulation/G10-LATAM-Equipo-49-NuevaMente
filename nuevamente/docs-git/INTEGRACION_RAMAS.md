@@ -212,6 +212,45 @@ Consecuencias concretas:
 
 **Este es el punto que conviene decidir antes de ejecutar cualquier `git merge`.**
 
+### 4.1 El CI de `develop` no se está ejecutando
+
+GitHub Actions solo lee workflows ubicados en `.github/workflows/` **en la raíz del
+repositorio**. En `develop` el archivo está en `nuevamente/.github/workflows/ci.yml`, por
+lo que GitHub deja de detectarlo:
+
+```bash
+$ gh api repos/No-Country-simulation/G10-LATAM-Equipo-49-NuevaMente/actions/workflows \
+    --jq '.workflows[] | "\(.name)  ->  \(.path)"'
+CI (contract-only)  ->  .github/workflows/ci.yml
+```
+
+El workflow sigue registrado en GitHub con la ruta de raíz (de cuando estaba en
+`nuevamente_v1/`), pero en el árbol actual de `develop` **no existe en esa ubicación**, así
+que no hay ejecuciones nuevas.
+
+Las últimas 4 ejecuciones — todas **`failure`** — son del 01/10, anteriores al cambio de
+estructura, y la última ya fallaba:
+
+```bash
+$ gh run list --limit 4
+completed  failure  Update project title in README.md  CI (contract-only)  develop  2026-10-01T01:49:34Z
+completed  failure  Update project title in README.md  CI (contract-only)  develop  2026-10-01T01:40:05Z
+completed  failure  Revise README to focus on arch...   CI (contract-only)  develop  2026-10-01T01:39:27Z
+completed  failure  Arquitectura de nuevamente           CI (contract-only)  develop  2026-10-01T01:35:08Z
+
+$ gh run view 36802930200 --log-failed | tail -3
+Found 25 errors.
+[*] 19 fixable with the `--fix` option.
+##[error]Process completed with exit code 1.
+```
+
+**El equipo cree que tiene CI y no lo tiene.** Los 94 tests de `develop` no se ejecutan en
+ningún push. Esto no lo detecta nadie porque un workflow que no corre no falla: simplemente
+no aparece ningún check en el PR — como se verificó al abrir este documento.
+
+Es otra consecuencia directa de la decisión sobre estructura de directorios, y la razón por
+la que la opción de raíz plana (sección 6, punto 1) también simplifica el CI.
+
 ---
 
 ## 5. `proposal/v1` — los 3 commits que nunca llegaron a `develop`
@@ -363,8 +402,10 @@ Un `.env` con credenciales, `__pycache__/` y datos de pruebas locales **serían 
 en `develop`. `OCI` no tiene el problema: su `.gitignore` está en la raíz y cubre
 `.env`, `.env.*`, `!.env.example`, `*.pem`, `__pycache__/` y `data/`.
 
-Si se elige conservar `nuevamente/`, hay que agregar un `.gitignore` en la raíz del
-repositorio. Si se elige la raíz plana, el de `OCI` ya sirve.
+Si se elige conservar `nuevamente/`, hay que agregar un `.gitignore` **y** mover
+`.github/workflows/ci.yml` a la raíz del repositorio (sección 4.1). Si se elige la raíz
+plana, el `.gitignore` de `OCI` ya sirve y el workflow vuelve a la ubicación que GitHub
+reconoce, sin moverlo.
 
 ### 2. Método de integración
 
@@ -427,15 +468,16 @@ Aparecieron durante el análisis. No bloquean la integración pero conviene regi
 
 | # | Ubicación | Hallazgo |
 |---|---|---|
-| 1 | `generation/llm_provider.py` | Define `EmbeddingProvider` en vez de `LLMProvider`; 2 módulos lo importan → `ImportError` (sección 3.6) |
-| 2 | `requirements.txt` | Falta `python-multipart`, requerido por `UploadFile = File(...)` (sección 3.5) |
-| 3 | `.env.example:45` | `GEMINI_GENERATION_MODEL` no corresponde a ningún campo de `Settings`, que espera `GEMINI_MODEL` y `GEMINI_EMBEDDING_MODEL`. Con `extra="ignore"` se descarta en silencio |
-| 4 | `.env.example:63` | `OCI_PREFIX=OCI-001` — un ID de backlog usado como prefijo de almacenamiento, y `Settings` ya no tiene el campo |
-| 5 | `.env.example:42-43` | `LLM_PROVIDER=gemini` sin `GEMINI_API_KEY` |
-| 6 | `.gitignore:5` | Solo ignora `.env` exacto; `.env.local`, `.env.production` se commitearían. Falta `.env.*` + `!.env.example` |
-| 7 | `tests/conftest.py` | No fuerza `LLM_PROVIDER`/`EMBEDDING_PROVIDER=mock`; un `.env` de dev con `gemini` romperá los tests al integrar RAG |
-| 8 | `setup.sh` / `setup.bat` | Instalan `requirements.txt`, sin pytest ni ruff → un dev nuevo no puede testear ni lintear |
-| 9 | `ui/api_client.py:5` | El docstring dice puerto `8011`; el código usa `8000` |
+| 1 | `.github/workflows/ci.yml` | **El workflow está en `nuevamente/.github/`, no en la raíz**: GitHub no lo ejecuta. El CI está caído (sección 4.1) |
+| 2 | `generation/llm_provider.py` | Define `EmbeddingProvider` en vez de `LLMProvider`; 2 módulos lo importan → `ImportError` (sección 3.6) |
+| 3 | `requirements.txt` | Falta `python-multipart`, requerido por `UploadFile = File(...)` (sección 3.5) |
+| 4 | `.env.example:45` | `GEMINI_GENERATION_MODEL` no corresponde a ningún campo de `Settings`, que espera `GEMINI_MODEL` y `GEMINI_EMBEDDING_MODEL`. Con `extra="ignore"` se descarta en silencio |
+| 5 | `.env.example:63` | `OCI_PREFIX=OCI-001` — un ID de backlog usado como prefijo de almacenamiento, y `Settings` ya no tiene el campo |
+| 6 | `.env.example:42-43` | `LLM_PROVIDER=gemini` sin `GEMINI_API_KEY` |
+| 7 | `.gitignore` | Solo ignora `.env` exacto; `.env.local`, `.env.production` se commitearían. Falta `.env.*` + `!.env.example`. Además está en `nuevamente/` y no en la raíz, así que **no protege nada del nivel raíz** (sección 6.1) |
+| 8 | `tests/conftest.py` | No fuerza `LLM_PROVIDER`/`EMBEDDING_PROVIDER=mock`; un `.env` de dev con `gemini` romperá los tests al integrar RAG |
+| 9 | `setup.sh` / `setup.bat` | Instalan `requirements.txt`, sin pytest ni ruff → un dev nuevo no puede testear ni lintear |
+| 10 | `ui/api_client.py:5` | El docstring dice puerto `8011`; el código usa `8000` |
 
 ### En `OCI`
 
