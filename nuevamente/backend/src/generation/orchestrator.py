@@ -1,7 +1,7 @@
 """Orquestador de generación adaptada (BE-GEN-003, GEN-004, GEN-005).
 
 Subtareas previstas (Fase 8 del Plan Técnico):
-    BE-GEN-003a — construir el prompt final combinando contexto + perfil/formato/nicho/detalle
+    BE-GEN-003a — construir el prompt final combinando contexto + perfil/formato/nicho
     BE-GEN-003b — invocar `LLMProvider.generate(...)` con manejo de timeout/retry
     BE-GEN-003c — mapear la respuesta del LLM a `ContenidoAdaptado`
 """

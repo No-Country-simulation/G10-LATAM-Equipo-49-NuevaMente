@@ -1,11 +1,22 @@
-"""Pantalla 2 — selection_view (UX-001): elegir perfil, formato, nicho y detalle."""
+"""Pantalla 2 — selection_view (UX-001): elegir perfil, formato y nicho."""
 import streamlit as st
 
 import api_client
 
-PERFILES = ["principiante", "developer", "lider_tecnico", "ejecutivo"]
-FORMATOS = ["tutorial", "resumen_ejecutivo"]
-NIVELES = ["breve", "estandar", "profundo"]
+PERFILES = [
+    "Principiante / Transición de Carrera",
+    "Desarrollador Junior / Semi Senior",
+    "Líder Técnico / Arquitecto",
+    "Gestor / Ejecutivo (No Técnico)",
+]
+FORMATOS = [
+    "Guía Práctica Paso a Paso (Tutorial)",
+    "Flashcards de Memorización",
+    "Quiz Interactivo con Justificaciones",
+    "Resumen Ejecutivo (TL;DR)",
+    "Guion de Clase / Video",
+]
+NICHOS = ["Fintech", "Salud", "E-commerce", "General"]
 
 
 def _summary(ingest: dict) -> None:
@@ -31,13 +42,12 @@ def render() -> None:
 
     perfil = st.selectbox("Perfil de la audiencia", PERFILES)
     formato = st.selectbox("Formato pedagógico", FORMATOS)
-    nicho = st.text_input("Nicho / contexto (opcional)", placeholder="p. ej. cloud computing")
-    nivel = st.select_slider("Nivel de detalle", options=NIVELES, value="estandar")
+    nicho = st.selectbox("Nicho / contexto", NICHOS, index=NICHOS.index("General"))
 
     col_generate, col_new = st.columns(2)
     if col_generate.button("Generar contenido adaptado", type="primary"):
         try:
-            job = api_client.request_adapt(ingest["document_id"], perfil, formato, nicho, nivel)
+            job = api_client.request_adapt(ingest["document_id"], perfil, formato, nicho)
         except api_client.ApiError as exc:
             st.session_state["error"] = {"code": exc.code, "message": exc.message}
             st.session_state["error_back"] = "upload" if exc.status_code == 404 else "selection"

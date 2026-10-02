@@ -14,9 +14,8 @@ from src.output.schema import (
 def _metadatos() -> Metadatos:
     return Metadatos(
         doc_id="doc_a",
-        perfil="principiante",
-        formato="tutorial",
-        nivel_detalle="estandar",
+        perfil="Principiante / Transición de Carrera",
+        formato="Guía Práctica Paso a Paso (Tutorial)",
         sources=[Source(chunk_id="doc_a-chunk-0", page=7)],
     )
 

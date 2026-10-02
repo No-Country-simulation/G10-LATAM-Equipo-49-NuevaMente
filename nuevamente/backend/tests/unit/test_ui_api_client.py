@@ -44,9 +44,32 @@ def test_non_json_error_becomes_internal_error(monkeypatch):
 def test_unreachable_api(monkeypatch):
     _fake(monkeypatch, error=httpx.ConnectError("boom"))
     with pytest.raises(api_client.ApiError) as info:
-        api_client.request_adapt("doc_a", "principiante", "tutorial", None, "estandar")
+        api_client.request_adapt(
+            "doc_a",
+            "Principiante / Transición de Carrera",
+            "Guía Práctica Paso a Paso (Tutorial)",
+            None,
+        )
     assert info.value.code == "API_UNREACHABLE"
     assert api_client.health() is False
+
+
+def test_request_adapt_defaults_empty_niche_to_general(monkeypatch):
+    captured = {}
+
+    def fake_request(method, path, **kwargs):
+        captured.update(kwargs)
+        return httpx.Response(202, json={"job_id": "job_a", "status": "PROCESSING"})
+
+    monkeypatch.setattr(api_client, "_request", fake_request)
+    api_client.request_adapt(
+        "doc_a",
+        "Principiante / Transición de Carrera",
+        "Guía Práctica Paso a Paso (Tutorial)",
+        None,
+    )
+
+    assert captured["json"]["nicho"] == "General"
 
 
 def test_health_true_when_ok(monkeypatch):

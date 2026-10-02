@@ -43,7 +43,7 @@ mismo proceso del API (Fase 4.2).
 | COMP-03 Embeddings | Generar vectores por chunk vía proveedor configurable | `backend/src/embeddings/` | `EmbeddingProvider` (`base.py`) |
 | COMP-04 Vector Store | Persistir embeddings + metadata, búsqueda semántica | `backend/src/vectorstore/` | `VectorStore` (`base.py`) |
 | COMP-05 RAG/Retrieval | Construir query, recuperar top-k, ensamblar contexto | `backend/src/rag/` | `RetrievalService` (`base.py`) |
-| COMP-06 Generation | Adaptar contenido por perfil/formato/nicho/detalle | `backend/src/generation/` | `LLMProvider` (`llm_provider.py`) |
+| COMP-06 Generation | Adaptar contenido por perfil/formato/nicho | `backend/src/generation/` | `LLMProvider` (`llm_provider.py`) |
 | COMP-07 Validation | Extraer claims, contrastarlos, calcular fidelidad | `backend/src/validation/` | `ValidationService` (`base.py`) |
 | COMP-08 Output | Ensamblar el JSON final según schema Pydantic formal | `backend/src/output/` | `NuevaMenteOutput` (`schema.py`) |
 | COMP-09 Storage | Cliente de almacenamiento, upload/verificación | `backend/src/storage/` | `StorageClient` (`base.py`) |
@@ -60,7 +60,7 @@ implementación cumpla el `Protocol` correspondiente.
 | Endpoint | Request | Response éxito | Error |
 | --- | --- | --- | --- |
 | `POST /ingest` | `multipart/form-data { file }` | `201 IngestResponse {document_id, file_type, status}` | `400 INVALID_FILE` |
-| `POST /adapt` | `AdaptRequest {document_id, perfil, formato, nicho?, nivel_detalle}` | `202 AdaptAcceptedResponse {job_id, status=PROCESSING}` | `404 DOCUMENT_NOT_FOUND` |
+| `POST /adapt` | `AdaptRequest {document_id, perfil, formato, nicho?}` | `202 AdaptAcceptedResponse {job_id, status=PROCESSING}` | `404 DOCUMENT_NOT_FOUND` |
 | `GET /adapt/{job_id}` | — | `200 NuevaMenteOutput` (o `status=NO_CONTEXT`) | `500 INTERNAL_ERROR` |
 | `GET /health` | — | `200 {status: "ok"}` | — |
 

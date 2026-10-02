@@ -90,12 +90,14 @@ python -m uvicorn src.api.main:app --host 127.0.0.1 --port 8000
 ```bash
 curl -F "file=@ejemplos/sample_contenedores.md" http://127.0.0.1:8000/ingest
 curl -X POST http://127.0.0.1:8000/adapt -H "Content-Type: application/json" \
-  -d '{"document_id":"doc_...","perfil":"principiante","formato":"tutorial"}'
+   -d '{"document_id":"doc_...","perfil":"Principiante / Transición de Carrera","formato":"Guía Práctica Paso a Paso (Tutorial)","nicho":"General"}'
 curl http://127.0.0.1:8000/adapt/job_...
 ```
 
-Opciones de `/adapt`: perfil `principiante · developer · lider_tecnico · ejecutivo`;
-formato `tutorial · resumen_ejecutivo`; `nivel_detalle` `breve · estandar · profundo` (opcional).
+Opciones de `/adapt`:
+- Perfiles: `Principiante / Transición de Carrera`, `Desarrollador Junior / Semi Senior`, `Líder Técnico / Arquitecto`, `Gestor / Ejecutivo (No Técnico)`.
+- Formatos: `Guía Práctica Paso a Paso (Tutorial)`, `Flashcards de Memorización`, `Quiz Interactivo con Justificaciones`, `Resumen Ejecutivo (TL;DR)`, `Guion de Clase / Video`.
+- Nichos: `Fintech`, `Salud`, `E-commerce`, `General` (predeterminado).
 
 Errores: siempre `{"error": {"code": "...", "message": "..."}}`.
 
@@ -104,7 +106,7 @@ Errores: siempre `{"error": {"code": "...", "message": "..."}}`.
 | `INVALID_FILE` | 400 | Tipo no soportado, vacío, > 10 MB, PDF dañado o con contraseña |
 | `SCANNED_PDF` | 400 | PDF sin texto seleccionable (escaneado) |
 | `DOCUMENT_TOO_LARGE` | 400 | Texto demasiado largo |
-| `INVALID_REQUEST` | 400 / 422 | Perfil/formato/nivel desconocido o cuerpo mal formado |
+| `INVALID_REQUEST` | 400 / 422 | Perfil, formato o nicho fuera de las opciones permitidas, o cuerpo mal formado |
 | `DOCUMENT_NOT_FOUND` / `JOB_NOT_FOUND` | 404 | Id inexistente |
 | `STORAGE_ERROR` | 502 | Falla el almacenamiento |
 
@@ -171,7 +173,7 @@ copiar `.env.example` como `.env` en la raíz.
 ```bash
 curl -F "file=@documento.pdf" http://127.0.0.1:8000/ingest
 curl -X POST http://127.0.0.1:8000/adapt -H "Content-Type: application/json" \
-  -d '{"document_id":"doc_...","perfil":"principiante","formato":"tutorial"}'
+   -d '{"document_id":"doc_...","perfil":"Principiante / Transición de Carrera","formato":"Guía Práctica Paso a Paso (Tutorial)","nicho":"General"}'
 ```
 
 Todos los errores tienen la forma `{"error": {"code": "...", "message": "..."}}`:
@@ -181,12 +183,14 @@ Todos los errores tienen la forma `{"error": {"code": "...", "message": "..."}}`
 | `INVALID_FILE` | 400 | Tipo no soportado, vacío, > 10 MB, PDF corrupto o con contraseña, texto no decodificable |
 | `SCANNED_PDF` | 400 | PDF sin texto extraíble (escaneado) |
 | `DOCUMENT_TOO_LARGE` | 400 | Texto > `MAX_DOCUMENT_CHARS` |
-| `INVALID_REQUEST` | 400 / 422 | Perfil/formato/nivel desconocido o cuerpo mal formado |
+| `INVALID_REQUEST` | 400 / 422 | Perfil, formato o nicho fuera de las opciones permitidas, o cuerpo mal formado |
 | `DOCUMENT_NOT_FOUND` / `JOB_NOT_FOUND` | 404 | Id inexistente |
 | `STORAGE_ERROR` | 502 | Falla el almacenamiento |
 
-Opciones de `/adapt`: perfil `principiante · developer · lider_tecnico · ejecutivo`;
-formato `tutorial · resumen_ejecutivo`; `nivel_detalle` `breve · estandar · profundo`.
+Opciones de `/adapt`:
+- Perfiles: `Principiante / Transición de Carrera`, `Desarrollador Junior / Semi Senior`, `Líder Técnico / Arquitecto`, `Gestor / Ejecutivo (No Técnico)`.
+- Formatos: `Guía Práctica Paso a Paso (Tutorial)`, `Flashcards de Memorización`, `Quiz Interactivo con Justificaciones`, `Resumen Ejecutivo (TL;DR)`, `Guion de Clase / Video`.
+- Nichos: `Fintech`, `Salud`, `E-commerce`, `General` (predeterminado).
 
 ## Pruebas y calidad
 
