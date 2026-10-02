@@ -31,3 +31,4 @@ class GenerationOrchestrator:
         Implementación futura.
         """
         ...
+

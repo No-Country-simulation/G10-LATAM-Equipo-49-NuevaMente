@@ -19,4 +19,5 @@ class GeminiEmbeddingProvider:
 
     def embed_query(self, text: str) -> list[float]:
         ...
-# Nota: cumple el Protocol correspondiente por forma estructural (duck typing) — no se usa issubclass() en tiempo de importación porque el Protocol no está marcado @runtime_checkable.
+# Nota: cumple el Protocol correspondiente por forma estructural (duck typing).
+# No se usa issubclass() en importación: el Protocol no es @runtime_checkable.

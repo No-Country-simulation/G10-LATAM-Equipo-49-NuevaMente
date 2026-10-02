@@ -1,164 +1,128 @@
-# Auditoría de salida (regla de cierre del encargo)
+# Auditoría de estado de implementación
 
-Clasificación de **todos** los archivos de este repositorio en una de
-cuatro categorías: `CONTRACT`, `PLACEHOLDER`, `DOCUMENTATION`,
-`CONFIGURATION`. Ninguno está clasificado como `IMPLEMENTATION`, `REAL
-INTEGRATION`, `FUNCTIONAL MOCK` ni `EXECUTABLE BUSINESS LOGIC`.
+Generada automáticamente a partir del código (`ast`): un archivo es **IMPLEMENTADO** si contiene
+funciones con lógica real o solo modelos/constantes sin firmas vacías; es **CONTRATO (pendiente)**
+si todas sus funciones tienen cuerpo `...`. Reflejo del estado actual del repositorio.
 
-- **CONTRACT** — define una interfaz, un schema de datos o una firma de
-  función (`Protocol`, `BaseModel`, función con cuerpo `...`).
-- **PLACEHOLDER** — archivo vacío o con un único comentario `# TODO:
-  implementación futura`, sin contenido de contrato.
-- **DOCUMENTATION** — explica arquitectura, trazabilidad, convenciones o
-  estrategia, sin código.
-- **CONFIGURATION** — configuración declarativa (dependencias, entorno, CI, lint).
+**Resumen:** 37 de 58 archivos Python implementados; el resto son contratos de Semana 2 en adelante
+(RAG, embeddings, vector store, LLM, validación de fidelidad, ensamblado final).
 
-## backend/src/core/
-| Archivo | Clasificación |
+> Este archivo debe regenerarse al cerrar cada semana; no editar a mano.
+
+## api/
+| Archivo | Estado |
 | --- | --- |
-| `config.py` | CONTRACT (schema `Settings` + firma `get_settings()`) |
-| `logging.py` | CONTRACT (firmas `configure_logging()`, `get_logger()`) |
-| `exceptions.py` | CONTRACT (taxonomía de excepciones, sin lógica) |
+| `main.py` | IMPLEMENTADO |
+| `orchestrator.py` | IMPLEMENTADO |
+| `schemas.py` | IMPLEMENTADO (modelos/constantes) |
 
-## backend/src/ingestion/
-| Archivo | Clasificación |
+## core/
+| Archivo | Estado |
 | --- | --- |
-| `models.py` | CONTRACT (`PageText`, `IngestResult`) |
-| `base.py` | CONTRACT (`Protocol DocumentExtractor`) |
-| `validators.py` | CONTRACT (firmas `validate_size`, `detect_type`) |
-| `pdf_extractor.py` | CONTRACT (firma `extract_pdf_text`) |
-| `md_extractor.py` | CONTRACT (firma `extract_markdown_text`) |
-| `txt_extractor.py` | CONTRACT (firma `extract_txt_text`) |
-| `router.py` | CONTRACT (clase `IngestionRouter`, firma `ingest`) |
+| `config.py` | IMPLEMENTADO |
+| `exceptions.py` | IMPLEMENTADO |
+| `logging.py` | IMPLEMENTADO |
 
-## backend/src/processing/
-| Archivo | Clasificación |
+## db/
+| Archivo | Estado |
 | --- | --- |
-| `models.py` | CONTRACT (`DocumentChunk`, validadores como firma) |
-| `cleaning.py` | CONTRACT (firma `clean_text`) |
-| `chunking.py` | CONTRACT (firma `chunk_text`) |
+| `models.py` | IMPLEMENTADO (modelos/constantes) |
+| `session.py` | IMPLEMENTADO |
 
-## backend/src/embeddings/
-| Archivo | Clasificación |
+## embeddings/
+| Archivo | Estado |
 | --- | --- |
-| `base.py` | CONTRACT (`Protocol EmbeddingProvider`) |
-| `providers/gemini.py` | PLACEHOLDER (clase declarada, métodos `...`, comentario TODO explícito) |
-| `providers/mock.py` | PLACEHOLDER (ídem, modo mock) |
-| `factory.py` | CONTRACT (firma `get_embedding_provider`) |
-| `embed_chunks.py` | CONTRACT (firma `embed_chunks`) |
+| `base.py` | CONTRATO (Protocol, definitivo) |
+| `embed_chunks.py` | CONTRATO (pendiente) |
+| `factory.py` | CONTRATO (pendiente) |
 
-## backend/src/vectorstore/
-| Archivo | Clasificación |
+## embeddings/providers/
+| Archivo | Estado |
 | --- | --- |
-| `base.py` | CONTRACT (`Protocol VectorStore`, `VectorStoreMatch`) |
-| `client.py` | CONTRACT (firma `get_chroma_client`) |
-| `store.py` | CONTRACT (clase `ChromaVectorStore`, firma `persist_chunks`) |
-| `search.py` | CONTRACT (firma `similarity_search`) |
+| `gemini.py` | CONTRATO (pendiente) |
+| `mock.py` | CONTRATO (pendiente) |
 
-## backend/src/rag/
-| Archivo | Clasificación |
+## generation/
+| Archivo | Estado |
 | --- | --- |
-| `base.py` | CONTRACT (`Protocol RetrievalService`) |
-| `retrieval_service.py` | CONTRACT (clase `DefaultRetrievalService`) |
-| `context_builder.py` | CONTRACT (firma `build_context`) |
+| `llm_provider.py` | CONTRATO (pendiente) |
+| `mock_adapter.py` | IMPLEMENTADO |
+| `models.py` | IMPLEMENTADO (modelos/constantes) |
+| `orchestrator.py` | CONTRATO (pendiente) |
+| `profiles.py` | IMPLEMENTADO (modelos/constantes) |
 
-## backend/src/generation/
-| Archivo | Clasificación |
+## ingestion/
+| Archivo | Estado |
 | --- | --- |
-| `models.py` | CONTRACT (`AdaptationRequest`, `ContenidoAdaptado`) |
-| `profiles.py` | CONFIGURATION (catálogo declarativo de perfiles/formatos) |
-| `prompts/README.md` | DOCUMENTATION |
-| `prompts/generacion_v1.txt` | PLACEHOLDER (comentario TODO, sin contenido real del prompt) |
-| `prompts/verificacion_v1.txt` | PLACEHOLDER (ídem) |
-| `llm_provider.py` | CONTRACT (`Protocol LLMProvider` + clases placeholder) |
-| `orchestrator.py` | CONTRACT (clase `GenerationOrchestrator`) |
+| `base.py` | CONTRATO (Protocol, definitivo) |
+| `md_extractor.py` | IMPLEMENTADO |
+| `models.py` | IMPLEMENTADO (modelos/constantes) |
+| `pdf_extractor.py` | IMPLEMENTADO |
+| `router.py` | IMPLEMENTADO |
+| `text_decoding.py` | IMPLEMENTADO |
+| `txt_extractor.py` | IMPLEMENTADO |
+| `validators.py` | IMPLEMENTADO |
 
-## backend/src/validation/
-| Archivo | Clasificación |
+## output/
+| Archivo | Estado |
 | --- | --- |
-| `models.py` | CONTRACT (`Claim`, `ClaimEvaluation`, `FidelityEvaluation`) |
-| `base.py` | CONTRACT (`Protocol ValidationService`) |
-| `claims_extractor.py` | CONTRACT (firma `extract_claims`) |
-| `fidelity_checker.py` | CONTRACT (firmas `verify_claim`, `aggregate_score`, clase `DefaultValidationService`) |
-| `pedagogical_eval.py` | CONTRACT (firma `evaluate_pedagogical_metadata`) |
+| `assembler.py` | CONTRATO (pendiente) |
+| `schema.py` | IMPLEMENTADO |
 
-## backend/src/output/
-| Archivo | Clasificación |
+## processing/
+| Archivo | Estado |
 | --- | --- |
-| `schema.py` | CONTRACT (`NuevaMenteOutput` y submodelos — el contrato de Fase 6) |
-| `assembler.py` | CONTRACT (firma `assemble_output`) |
+| `chunking.py` | IMPLEMENTADO |
+| `cleaning.py` | IMPLEMENTADO |
+| `models.py` | IMPLEMENTADO |
 
-## backend/src/storage/
-| Archivo | Clasificación |
+## rag/
+| Archivo | Estado |
 | --- | --- |
-| `base.py` | CONTRACT (`Protocol StorageClient`, `StorageResult`) |
-| `oci_config.py` | CONTRACT (firma `load_oci_config`) |
-| `oci_client.py` | PLACEHOLDER (clase declarada, métodos `...`, comentario TODO explícito) |
-| `mock_client.py` | PLACEHOLDER (ídem, modo mock) |
-| `upload.py` | CONTRACT (firmas `upload_original`, `upload_result_json`) |
-| `verify.py` | CONTRACT (firma `verify_upload`) |
+| `base.py` | CONTRATO (Protocol, definitivo) |
+| `context_builder.py` | CONTRATO (pendiente) |
+| `retrieval_service.py` | CONTRATO (pendiente) |
 
-## backend/src/db/
-| Archivo | Clasificación |
+## storage/
+| Archivo | Estado |
 | --- | --- |
-| `models.py` | CONTRACT (`Job`, `JobStatus`) |
-| `session.py` | CONTRACT (firmas `create_job`, `update_job_status`, `get_job`) |
+| `base.py` | CONTRATO (Protocol, definitivo) |
+| `factory.py` | IMPLEMENTADO |
+| `mock_client.py` | IMPLEMENTADO |
+| `naming.py` | IMPLEMENTADO |
+| `oci_client.py` | IMPLEMENTADO |
+| `oci_config.py` | IMPLEMENTADO |
+| `upload.py` | IMPLEMENTADO |
+| `verify.py` | IMPLEMENTADO |
 
-## backend/src/api/
-| Archivo | Clasificación |
+## validation/
+| Archivo | Estado |
 | --- | --- |
-| `schemas.py` | CONTRACT (schemas HTTP de Fase 6) |
-| `orchestrator.py` | CONTRACT (clase `PipelineOrchestrator`) |
-| `main.py` | CONTRACT (declaración de rutas FastAPI, handlers con cuerpo `...`) |
+| `base.py` | CONTRATO (Protocol, definitivo) |
+| `claims_extractor.py` | CONTRATO (pendiente) |
+| `fidelity_checker.py` | CONTRATO (pendiente) |
+| `models.py` | IMPLEMENTADO (modelos/constantes) |
+| `pedagogical_eval.py` | CONTRATO (pendiente) |
+
+## vectorstore/
+| Archivo | Estado |
+| --- | --- |
+| `base.py` | CONTRATO (Protocol, definitivo) |
+| `client.py` | CONTRATO (pendiente) |
+| `search.py` | CONTRATO (pendiente) |
+| `store.py` | CONTRATO (pendiente) |
 
 ## ui/
-| Archivo | Clasificación |
+| Archivo | Estado |
 | --- | --- |
-| `app.py` | CONTRACT (firma `main`) |
-| `api_client.py` | CONTRACT (firmas `ingest`, `request_adapt`, `poll_adapt_result`) |
-| `components/*.py` (5 archivos) | CONTRACT (firma `render` por pantalla) |
+| `api_client.py` | IMPLEMENTADO |
+| `app.py` | IMPLEMENTADO |
 
-## backend/tests/
-| Archivo | Clasificación |
+## ui/components/
+| Archivo | Estado |
 | --- | --- |
-| `TESTING_STRATEGY.md` | DOCUMENTATION |
-| `unit/.gitkeep`, `integration/.gitkeep`, `fixtures/.gitkeep` | PLACEHOLDER (directorio vacío, sin `def test_...`) |
-
-## Configuración
-
-| Archivo | Clasificación |
-| --- | --- |
-| `.env.example` | CONFIGURATION |
-| `.gitignore` | CONFIGURATION |
-| `backend/requirements.txt` | CONFIGURATION |
-| `backend/pyproject.toml` | CONFIGURATION |
-| `.github/workflows/ci.yml` | CONFIGURATION (valida forma del contrato, no ejecuta lógica de negocio) |
-| `demo.sh` | PLACEHOLDER (solo `echo` de pasos previstos, ninguna llamada real) |
-
-## Documentación
-
-| Archivo | Clasificación |
-| --- | --- |
-| `README.md` | DOCUMENTATION |
-| `CONTRIBUTING.md` | DOCUMENTATION |
-| `docs/architecture.md` | DOCUMENTATION |
-| `docs/TRACEABILITY.md` | DOCUMENTATION |
-| `docs/AUDIT.md` (este archivo) | DOCUMENTATION |
-| `docs/diagrams/pipeline.mmd` | DOCUMENTATION |
-| `docs/demo-scenarios/*.md` (3 archivos) | DOCUMENTATION |
-| `docs-git/GIT_GITHUB_GUIDE.md` | DOCUMENTATION |
-| `n8n-workflows/README.md` | DOCUMENTATION |
-| `backend/src/generation/prompts/README.md` | DOCUMENTATION |
-
-## Verificación de la regla fundamental
-
-- **68 archivos `.py`** bajo `backend/src/` y `ui/` (ver conteo en la raíz
-  del repositorio) — todos compilan (`py_compile`, sin errores de
-  sintaxis) y ninguno contiene una llamada real a un SDK externo, una
-  consulta SQL, un `fetch`/`requests` de red, ni un cuerpo de función con
-  más de una declaración de tipo `Protocol`/`BaseModel` o un `...`.
-- Los únicos archivos con contenido "ejecutable" en sentido estricto son
-  `demo.sh` (solo `echo`) y `.github/workflows/ci.yml` (lint + import
-  check + `pytest --collect-only`, que recolecta 0 tests por diseño).
-- No se creó ningún commit ni se ejecutó ningún comando Git durante la
-  construcción de este repositorio.
+| `error_view.py` | IMPLEMENTADO |
+| `loading_view.py` | IMPLEMENTADO |
+| `result_view.py` | IMPLEMENTADO |
+| `selection_view.py` | IMPLEMENTADO |
+| `upload_view.py` | IMPLEMENTADO |

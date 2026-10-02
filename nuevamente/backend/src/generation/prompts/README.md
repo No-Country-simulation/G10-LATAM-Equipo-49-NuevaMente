@@ -12,3 +12,4 @@ Fase 15 del Plan Técnico y debe copiarse ahí como implementación futura.
   Variables: `{contexto}`, `{perfil}`, `{formato}`, `{nicho}`, `{nivel_detalle}`.
 - `verificacion_v1.txt` (PROMPT-002) — verificación de un claim contra el
   contexto fuente. Variables: `{claim}`, `{contexto_fuente}`.
+

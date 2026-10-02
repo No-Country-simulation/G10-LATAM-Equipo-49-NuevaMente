@@ -12,3 +12,4 @@ def evaluate_pedagogical_metadata(contenido_generado: str) -> dict:
     Implementación futura.
     """
     ...
+

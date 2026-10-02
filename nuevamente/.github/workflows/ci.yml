@@ -1,8 +1,7 @@
-name: CI (contract-only)
+name: CI
 
-# En esta fase no hay lógica funcional: el CI solo verifica que la
-# ESTRUCTURA del contrato es válida (sintaxis, imports, lint). No instala
-# proveedores reales ni ejecuta ningún pipeline.
+# Lint + verificación de imports + tests. Los tests corren con proveedores en
+# modo mock (sin credenciales ni red).
 
 on:
   push:
@@ -11,7 +10,7 @@ on:
     branches: [develop, main]
 
 jobs:
-  contract-check:
+  check:
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -24,13 +23,15 @@ jobs:
         with:
           python-version: "3.11"
           cache: "pip"
-          cache-dependency-path: backend/requirements.txt
+          cache-dependency-path: |
+            backend/requirements.txt
+            backend/requirements-dev.txt
 
-      - name: Instalar dependencias declarativas
-        run: pip install -r requirements.txt
+      - name: Instalar dependencias
+        run: pip install -r requirements-dev.txt
 
-      - name: Lint (ruff) — valida forma del contrato, no lógica
-        run: ruff check src
+      - name: Lint (ruff)
+        run: ruff check --config pyproject.toml src tests ../ui
 
       - name: Verificar que todos los módulos importan sin errores
         run: |
@@ -41,5 +42,5 @@ jobs:
           print('Todos los módulos de src/ importan correctamente')
           "
 
-      - name: Recolectar tests (se espera 0 — no hay pytest aún, ver TESTING_STRATEGY.md)
-        run: pytest tests/ --collect-only -q
+      - name: Tests (unitarios + integración)
+        run: pytest -q

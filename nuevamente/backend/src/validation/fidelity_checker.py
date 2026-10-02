@@ -12,8 +12,8 @@ Reglas de diseño (Plan Técnico, Fase 14):
       "inventa" un score ni se afirma "0% de alucinaciones".
 """
 from src.generation.llm_provider import LLMProvider
-from src.validation.models import Claim, ClaimEvaluation, FidelityEvaluation
 from src.validation.base import ValidationService
+from src.validation.models import Claim, ClaimEvaluation, FidelityEvaluation
 
 
 def verify_claim(provider: LLMProvider, claim: Claim, contexto_fuente: str) -> ClaimEvaluation:
@@ -41,4 +41,5 @@ class DefaultValidationService:
 
     def validate(self, contenido_generado: str, contexto_fuente: str) -> FidelityEvaluation:
         ...
-# Nota: cumple el Protocol correspondiente por forma estructural (duck typing) — no se usa issubclass() en tiempo de importación porque el Protocol no está marcado @runtime_checkable.
+# Nota: cumple el Protocol correspondiente por forma estructural (duck typing).
+# No se usa issubclass() en importación: el Protocol no es @runtime_checkable.

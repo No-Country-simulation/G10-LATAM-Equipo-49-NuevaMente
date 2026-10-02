@@ -13,3 +13,4 @@ def get_embedding_provider() -> EmbeddingProvider:
     Implementación futura.
     """
     ...
+

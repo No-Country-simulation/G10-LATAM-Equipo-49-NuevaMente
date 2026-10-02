@@ -135,3 +135,78 @@ ejemplos/      documento de prueba              data/        datos locales (se c
 5. [`docs/AUDIT.md`](docs/AUDIT.md) — verificación de que ningún archivo
    de este repositorio quedó como implementación funcional.
 
+## Inicio rápido
+
+Requisito: **Python 3.11 o superior** (en Windows, marcar "Add python.exe to PATH" al instalar).
+
+| Paso | Windows | Mac / Linux |
+|---|---|---|
+| 1. Instalar (una vez) | `setup.bat` | `./setup.sh` |
+| 2. Encender la API | `run_api.bat` | `./run_api.sh` |
+| 3. Encender la interfaz (otra ventana) | `run_ui.bat` | `./run_ui.sh` |
+
+- API: http://127.0.0.1:8000 (documentación interactiva en `/docs`)
+- Interfaz: http://localhost:8501 — para probar, sube `backend/tests/fixtures/sample_contenedores.md`.
+- Prueba por consola con la API encendida: `./demo.sh`
+
+Manual (sin scripts):
+```bash
+python -m venv .venv && source .venv/bin/activate      # Windows: .venv\Scripts\activate
+pip install -r backend/requirements.txt
+cd backend && python -m uvicorn src.api.main:app --port 8000     # terminal 1
+streamlit run ui/app.py                                          # terminal 2 (desde la raíz)
+```
+No hace falta `.env`: los valores por defecto funcionan (todo en modo mock). Para personalizar,
+copiar `.env.example` como `.env` en la raíz.
+
+## API (contrato de la Fase 6)
+
+| Endpoint | Respuesta |
+|---|---|
+| `GET /health` | `200 {"status": "ok"}` |
+| `POST /ingest` (multipart `file`) | `201 {"document_id", "file_type", "status": "INGESTED", ...}` + resumen (`chunk_count`, `page_count`, `warnings`…) |
+| `POST /adapt` (JSON) | `202 {"job_id", "status": "PROCESSING"}` |
+| `GET /adapt/{job_id}` | `200` resultado (`NuevaMenteOutput`) · `202` si aún se procesa · `404` si no existe |
+
+```bash
+curl -F "file=@documento.pdf" http://127.0.0.1:8000/ingest
+curl -X POST http://127.0.0.1:8000/adapt -H "Content-Type: application/json" \
+  -d '{"document_id":"doc_...","perfil":"principiante","formato":"tutorial"}'
+```
+
+Todos los errores tienen la forma `{"error": {"code": "...", "message": "..."}}`:
+
+| Código | HTTP | Cuándo |
+|---|---|---|
+| `INVALID_FILE` | 400 | Tipo no soportado, vacío, > 10 MB, PDF corrupto o con contraseña, texto no decodificable |
+| `SCANNED_PDF` | 400 | PDF sin texto extraíble (escaneado) |
+| `DOCUMENT_TOO_LARGE` | 400 | Texto > `MAX_DOCUMENT_CHARS` |
+| `INVALID_REQUEST` | 400 / 422 | Perfil/formato/nivel desconocido o cuerpo mal formado |
+| `DOCUMENT_NOT_FOUND` / `JOB_NOT_FOUND` | 404 | Id inexistente |
+| `STORAGE_ERROR` | 502 | Falla el almacenamiento |
+
+Opciones de `/adapt`: perfil `principiante · developer · lider_tecnico · ejecutivo`;
+formato `tutorial · resumen_ejecutivo`; `nivel_detalle` `breve · estandar · profundo`.
+
+## Pruebas y calidad
+
+```bash
+cd backend
+pip install -r requirements-dev.txt
+pytest -q                                              # unitarias + integración (modo mock, sin red)
+ruff check --config pyproject.toml src tests ../ui     # lint (el mismo que corre el CI)
+```
+
+## Estructura
+
+```
+backend/src/{core,db,api,ingestion,processing,storage,generation,output}   ← implementado
+backend/src/{embeddings,vectorstore,rag,validation}                        ← contratos (Semana 2-3)
+backend/tests/{unit,integration,fixtures}      ui/{app.py,api_client.py,components/}
+```
+
+## Limitaciones conocidas
+- `/adapt` es mock: no hay RAG, LLM ni score de fidelidad (`fidelidad_score` = `null`, estado `PARTIAL`).
+- Los PDF escaneados (sin texto) se rechazan; no hay OCR.
+- `STORAGE_PROVIDER=oci` está implementado pero **no se ha probado contra un bucket real**.
+- Las rutas relativas de `.env` (`./data/...`) se resuelven desde la raíz del proyecto, no desde el directorio actual.

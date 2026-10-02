@@ -1,4 +1,4 @@
-# Solo si usas STORAGE_PROVIDER=oci (guardar archivos en Oracle Cloud).
+# Solo necesario con STORAGE_PROVIDER=oci (almacenamiento real en OCI Object Storage).
 -r requirements.txt
 
 oci>=2.130

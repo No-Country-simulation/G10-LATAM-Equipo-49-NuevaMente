@@ -58,3 +58,4 @@ FE-API-001 (mock) ────────────────────�
 Ninguna dependencia de este DAG se implementa en esta fase; se documenta
 para que la implementación futura respete el orden (p. ej. no se puede
 implementar `BE-GEN-003` antes que `BE-RAG-010`).
+

@@ -1,8 +1,8 @@
 # Estrategia de testing (Fase 16 del Plan Técnico)
 
-**Esta fase es CONTRACT-ONLY: no existen funciones `def test_...()`.**
-Este documento define qué se probará y cómo, para que la implementación
-futura tenga una especificación clara y trazable.
+**Estado:** implementadas las suites de ingesta, processing, output, storage, db,
+mock de adaptación, cliente de la UI y el flujo API (`/ingest` → `/adapt` →
+`GET /adapt/{job_id}`). Pendientes: embeddings, fidelidad y golden test (Semanas 2-3).
 
 ## Estructura prevista
 

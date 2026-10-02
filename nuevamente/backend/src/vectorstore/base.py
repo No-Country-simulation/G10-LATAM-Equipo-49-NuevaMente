@@ -45,3 +45,4 @@ class VectorStore(Protocol):
         Implementación futura.
         """
         ...
+

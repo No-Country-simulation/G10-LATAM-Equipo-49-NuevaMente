@@ -12,5 +12,11 @@ data/mock_oci/
 .idea/
 .vscode/
 *.log
+# Claves privadas (OCI) — nunca versionar
 *.pem
-data/
+.oci/
+
+# Estado local (se conserva solo data/.gitkeep)
+data/*
+!data/.gitkeep
+nuevamente-git-backup/

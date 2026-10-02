@@ -16,3 +16,4 @@ class MockEmbeddingProvider:
 
     def embed_query(self, text: str) -> list[float]:
         ...
+

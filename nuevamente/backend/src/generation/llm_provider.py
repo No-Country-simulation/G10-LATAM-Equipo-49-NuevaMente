@@ -1,40 +1,25 @@
-"""Contrato del proveedor de LLM (COMP-06) + implementaciones futuras.
+"""Contrato del proveedor de embeddings (COMP-03).
 
-DT-09: Gemini propuesto (🔴 bloqueante, no confirmado formalmente — Plan
-Técnico Fase 10/20). El resto del pipeline solo depende de `LLMProvider`,
-nunca de un SDK concreto (RNF-005).
+Fuente: instrucciones de arquitectura + DT-09 (Gemini propuesto. Cualquier proveedor concreto (Gemini, mock, u otro)
+debe implementar este `Protocol` para que el resto del pipeline (COMP-04,
+COMP-05) sea independiente del proveedor (RNF-005).
 """
 from typing import Protocol
 
 
-class LLMProvider(Protocol):
-    """Genera texto a partir de un prompt, con temperatura configurable."""
+class EmbeddingProvider(Protocol):
+    """Genera vectores de embedding para texto."""
 
-    def generate(self, prompt: str, temperature: float = 0.3) -> str:
-        """Invoca al modelo de lenguaje.
-
-        Lanza:
-            LLMProviderError: ante timeout, error de API o cuota agotada
-                (Fase 14 — timeout sugerido 30s, 1 reintento).
+    def embed_documents(self, texts: list[str]) -> list[list[float]]:
+        """Genera un vector por cada texto de `texts`, en el mismo orden.
 
         Implementación futura.
         """
         ...
 
+    def embed_query(self, text: str) -> list[float]:
+        """Genera el vector de una consulta individual (para retrieval).
 
-class GeminiLLMProvider:
-    """Implementación futura sobre Google Gemini API.
-
-    # TODO: implementación futura — NO realizar llamadas reales al SDK de
-    # Gemini en esta fase (CONTRACT-ONLY).
-    """
-
-    def generate(self, prompt: str, temperature: float = 0.3) -> str:
-        ...
-
-
-class MockLLMProvider:
-    """Implementación futura en modo mock, determinista, sin red."""
-
-    def generate(self, prompt: str, temperature: float = 0.3) -> str:
+        Implementación futura.
+        """
         ...

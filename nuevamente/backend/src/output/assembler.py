@@ -1,6 +1,6 @@
 """Ensamblador del JSON final (BE-OUT-003, COMP-08)."""
-from src.output.schema import NuevaMenteOutput
 from src.generation.models import ContenidoAdaptado as GeneratedContent
+from src.output.schema import NuevaMenteOutput
 from src.validation.models import FidelityEvaluation
 
 

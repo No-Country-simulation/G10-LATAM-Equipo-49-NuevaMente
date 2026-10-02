@@ -1,5 +1,6 @@
 """Modelos de dominio de Validation (COMP-07). Fuente: RF-014, DT-05."""
 from typing import Literal
+
 from pydantic import BaseModel
 
 Veredicto = Literal["SI", "NO", "PARCIAL"]
@@ -32,3 +33,4 @@ class FidelityEvaluation(BaseModel):
     score: float | None = None
     claims_no_soportados: list[str] = []
     observaciones: list[str] = []
+
