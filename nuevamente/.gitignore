@@ -1,0 +1,22 @@
+.venv/
+venv/
+__pycache__/
+*.pyc
+.env
+.pytest_cache/
+.ruff_cache/
+.coverage
+data/chroma/
+data/sqlite/
+data/mock_oci/
+.idea/
+.vscode/
+*.log
+# Claves privadas (OCI) — nunca versionar
+*.pem
+.oci/
+
+# Estado local (se conserva solo data/.gitkeep)
+data/*
+!data/.gitkeep
+nuevamente-git-backup/

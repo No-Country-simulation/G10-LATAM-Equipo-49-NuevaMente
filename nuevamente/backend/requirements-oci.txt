@@ -1,0 +1,4 @@
+# Solo necesario con STORAGE_PROVIDER=oci (almacenamiento real en OCI Object Storage).
+-r requirements.txt
+
+oci>=2.130

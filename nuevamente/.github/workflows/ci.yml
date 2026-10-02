@@ -1,0 +1,46 @@
+name: CI
+
+# Lint + verificación de imports + tests. Los tests corren con proveedores en
+# modo mock (sin credenciales ni red).
+
+on:
+  push:
+    branches: [develop, main]
+  pull_request:
+    branches: [develop, main]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+          cache-dependency-path: |
+            backend/requirements.txt
+            backend/requirements-dev.txt
+
+      - name: Instalar dependencias
+        run: pip install -r requirements-dev.txt
+
+      - name: Lint (ruff)
+        run: ruff check --config pyproject.toml src tests ../ui
+
+      - name: Verificar que todos los módulos importan sin errores
+        run: |
+          python -c "
+          import importlib, pkgutil, src
+          for _, name, _ in pkgutil.walk_packages(src.__path__, prefix='src.'):
+              importlib.import_module(name)
+          print('Todos los módulos de src/ importan correctamente')
+          "
+
+      - name: Tests (unitarios + integración)
+        run: pytest -q

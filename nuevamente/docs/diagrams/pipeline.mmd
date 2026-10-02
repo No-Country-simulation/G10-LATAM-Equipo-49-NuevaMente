@@ -1,0 +1,14 @@
+flowchart TD
+    U[Usuario] --> UI[Interfaz web - Streamlit, COMP-10]
+    UI -->|HTTP REST| API[API pública - FastAPI, COMP-11]
+    API --> ING[Ingestion, COMP-01]
+    ING --> PROC[Processing / Chunking, COMP-02]
+    PROC --> EMB[Embeddings, COMP-03]
+    EMB --> VS[Vector Store - ChromaDB embebido, COMP-04]
+    VS --> RAG[RAG / Retrieval, COMP-05]
+    RAG -->|NO_CONTEXT si score bajo| OUT
+    RAG --> GEN[Generation - LLM, COMP-06]
+    GEN --> VAL[Validation - Fidelidad, COMP-07]
+    VAL --> OUT[Output - JSON Pydantic, COMP-08]
+    OUT --> ST[Storage - OCI Object Storage, COMP-09]
+    ST --> UI
