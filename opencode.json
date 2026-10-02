@@ -1,0 +1,17 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "GitHub": {
+      "type": "remote",
+      "url": "https://api.githubcopilot.com/mcp/",
+      "enabled": true,
+      "oauth": false,
+      "timeout": 20000,
+      "headers": {
+        "Authorization": "Bearer {file:~/.config/opencode/github_token}",
+        "X-MCP-Toolsets": "repos,issues,pull_requests",
+        "X-MCP-Readonly": "true"
+      }
+    }
+  }
+}
