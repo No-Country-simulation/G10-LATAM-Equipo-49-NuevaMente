@@ -1,0 +1,35 @@
+Nombre del equipo:
+Nombre de todos los integrantes;
+Link de LinkedIn de cada participante (si tiene);
+Nombre del proyecto / idea.
+
+Viviana Hurtado
+UX/UI Designer
+Link de LinkedIn: www.linkedin.com/in/viviana-hurtado-valencia-9aa576355/
+
+Pedro Orozco
+Cloud Developer
+Link de LinkedIn: www.linkedin.com/in/pedroroz
+
+Jose Eduardo Chávez
+QA Tester
+Link de LinkedIn 
+
+Rodrigo Reyes
+Vibe Coder
+Link de LinkedIn: www.linkedin.com/in/rodrigo-reyes-402598329
+
+Osvaldo Acosta
+Software Engineer
+Link de LinkedIn: www.linkedin.com/in/osvaldo-acosta-813024163
+
+Fernando Manuel Enciso
+Backend Developer
+Link de LinkedIn 
+
+Miguel Angel De La Cruz Lazaro
+Backend Developer
+Link de LinkedIn 
+
+Diana Ocaña Martínez
+Backend Developer
