@@ -73,15 +73,14 @@ def ingest(file_bytes: bytes, filename: str) -> dict:
 
 
 def request_adapt(
-    document_id: str, perfil: str, formato: str, nicho: str | None, nivel_detalle: str
+    document_id: str, perfil: str, formato: str, nicho: str | None
 ) -> dict:
     """Llama a `POST /adapt`. Devuelve `{"job_id", "status"}`."""
     payload = {
         "document_id": document_id,
         "perfil": perfil,
         "formato": formato,
-        "nicho": nicho or None,
-        "nivel_detalle": nivel_detalle,
+        "nicho": nicho or "General",
     }
     response = _request("POST", "/adapt", json=payload)
     _raise_for_error(response)

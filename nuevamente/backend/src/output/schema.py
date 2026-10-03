@@ -13,6 +13,7 @@ from typing import Literal
 from pydantic import BaseModel, field_validator
 
 from src.generation.models import ContenidoAdaptado
+from src.generation.profiles import FormatoSalida, NichoSector, PerfilDestinatario
 
 Status = Literal["SUCCESS", "PARTIAL", "NO_CONTEXT", "ERROR"]
 
@@ -26,10 +27,9 @@ class Source(BaseModel):
 
 class Metadatos(BaseModel):
     doc_id: str
-    perfil: str
-    formato: str
-    nicho: str | None = None
-    nivel_detalle: str
+    perfil: PerfilDestinatario
+    formato: FormatoSalida
+    nicho: NichoSector = "General"
     sources: list[Source] = []
 
 

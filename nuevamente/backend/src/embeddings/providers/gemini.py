@@ -4,7 +4,6 @@ tier), DT-09. 🔴 Proveedor pendiente de confirmación formal por el equipo.
 # TODO: implementación futura — NO realizar llamadas reales al SDK de
 # Gemini en esta fase (CONTRACT-ONLY).
 """
-from src.embeddings.base import EmbeddingProvider
 
 
 class GeminiEmbeddingProvider:

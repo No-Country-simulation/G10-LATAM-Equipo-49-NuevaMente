@@ -8,6 +8,8 @@ from typing import Literal
 
 from pydantic import BaseModel
 
+from src.generation.profiles import FormatoSalida, NichoSector, PerfilDestinatario
+
 FileType = Literal["pdf", "md", "txt"]
 
 
@@ -34,10 +36,9 @@ class AdaptRequest(BaseModel):
     """`POST /adapt` — body JSON."""
 
     document_id: str
-    perfil: str
-    formato: str
-    nicho: str | None = None
-    nivel_detalle: str = "estandar"
+    perfil: PerfilDestinatario
+    formato: FormatoSalida
+    nicho: NichoSector = "General"
 
 
 class AdaptAcceptedResponse(BaseModel):

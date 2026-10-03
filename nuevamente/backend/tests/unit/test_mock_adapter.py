@@ -19,17 +19,25 @@ def _chunks(n: int) -> list[DocumentChunk]:
     ]
 
 
-def test_chunks_used_depend_on_detail_level():
+def test_chunks_used_is_fixed_at_three():
     chunks = _chunks(8)
-    assert len(build_mock_content("p", "tutorial", None, "breve", chunks)[1]) == 1
-    assert len(build_mock_content("p", "tutorial", None, "estandar", chunks)[1]) == 3
-    assert len(build_mock_content("p", "tutorial", None, "profundo", chunks)[1]) == 5
+    assert len(
+        build_mock_content(
+            "Principiante / Transición de Carrera",
+            "Guía Práctica Paso a Paso (Tutorial)",
+            "General",
+            chunks,
+        )[1]
+    ) == 3
 
 
 def test_content_cites_real_chunks_and_flags_mock_mode():
-    content, used = build_mock_content("principiante", "tutorial", "cloud", "estandar", _chunks(4))
+    profile = "Principiante / Transición de Carrera"
+    content, used = build_mock_content(
+        profile, "Guía Práctica Paso a Paso (Tutorial)", "Fintech", _chunks(4)
+    )
     assert MOCK_NOTICE in content.cuerpo
-    assert "principiante" in content.cuerpo and "cloud" in content.cuerpo
+    assert profile in content.cuerpo and "Fintech" in content.cuerpo
     assert "doc_a-chunk-0" in content.cuerpo
     assert "pág. 1" in content.cuerpo
     assert [c.id for c in used] == ["doc_a-chunk-0", "doc_a-chunk-1", "doc_a-chunk-2"]
@@ -39,6 +47,11 @@ def test_content_cites_real_chunks_and_flags_mock_mode():
 
 def test_long_excerpts_are_truncated():
     long_chunk = _chunks(1)[0].model_copy(update={"text": "palabra " * 500})
-    content, _ = build_mock_content("p", "tutorial", None, "breve", [long_chunk])
+    content, _ = build_mock_content(
+        "Principiante / Transición de Carrera",
+        "Guía Práctica Paso a Paso (Tutorial)",
+        "General",
+        [long_chunk],
+    )
     assert "…" in content.cuerpo
     assert len(content.cuerpo) < 1200

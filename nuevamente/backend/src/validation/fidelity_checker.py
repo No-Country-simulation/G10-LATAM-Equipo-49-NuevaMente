@@ -12,7 +12,6 @@ Reglas de diseño (Plan Técnico, Fase 14):
       "inventa" un score ni se afirma "0% de alucinaciones".
 """
 from src.generation.llm_provider import LLMProvider
-from src.validation.base import ValidationService
 from src.validation.models import Claim, ClaimEvaluation, FidelityEvaluation
 
 

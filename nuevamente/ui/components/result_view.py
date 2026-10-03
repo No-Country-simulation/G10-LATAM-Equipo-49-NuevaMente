@@ -25,7 +25,7 @@ def render() -> None:
     meta = result.get("metadatos", {})
     st.caption(
         f"Perfil: **{meta.get('perfil', '—')}** · Formato: **{meta.get('formato', '—')}** · "
-        f"Detalle: **{meta.get('nivel_detalle', '—')}** · Documento: `{meta.get('doc_id', '—')}`"
+        f"Documento: `{meta.get('doc_id', '—')}`"
     )
 
     content = result.get("contenido_adaptado")

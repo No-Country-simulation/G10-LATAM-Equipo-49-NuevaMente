@@ -32,7 +32,7 @@ from src.db.session import (
     update_job_status,
 )
 from src.generation.mock_adapter import MOCK_NOTICE, build_mock_content
-from src.generation.profiles import FORMATOS_MVP, PERFILES_MVP
+from src.generation.profiles import FORMATOS_MVP, NICHOS_MVP, PERFILES_MVP
 from src.ingestion.router import IngestionRouter
 from src.output.schema import (
     AlmacenamientoOCI,
@@ -48,8 +48,6 @@ from src.storage.factory import get_storage_client
 from src.storage.upload import upload_original, upload_result_json
 
 log = get_logger(__name__)
-
-NIVELES_DETALLE = ("breve", "estandar", "profundo")
 
 
 class PipelineOrchestrator:
@@ -126,10 +124,9 @@ class PipelineOrchestrator:
             raise InvalidRequestError(
                 f"Formato no soportado: {request.formato!r}. Opciones: {', '.join(FORMATOS_MVP)}."
             )
-        if request.nivel_detalle not in NIVELES_DETALLE:
+        if request.nicho not in NICHOS_MVP:
             raise InvalidRequestError(
-                f"Nivel de detalle no soportado: {request.nivel_detalle!r}. "
-                f"Opciones: {', '.join(NIVELES_DETALLE)}."
+                f"Nicho no soportado: {request.nicho!r}. Opciones: {', '.join(NICHOS_MVP)}."
             )
 
     def request_adaptation(self, request: AdaptRequest) -> Job:
@@ -165,7 +162,7 @@ class PipelineOrchestrator:
             raise NoContextError("El documento no tiene fragmentos disponibles.")
 
         content, used = build_mock_content(
-            request.perfil, request.formato, request.nicho, request.nivel_detalle, chunks
+            request.perfil, request.formato, request.nicho, chunks
         )
         output = NuevaMenteOutput(
             status="PARTIAL",
@@ -174,7 +171,6 @@ class PipelineOrchestrator:
                 perfil=request.perfil,
                 formato=request.formato,
                 nicho=request.nicho,
-                nivel_detalle=request.nivel_detalle,
                 sources=[Source(chunk_id=c.id, page=c.page) for c in used],
             ),
             contenido_adaptado=content,

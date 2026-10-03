@@ -1,17 +1,17 @@
 """Ensamblador del JSON final (BE-OUT-003, COMP-08)."""
 from src.generation.models import ContenidoAdaptado as GeneratedContent
+from src.generation.profiles import FormatoSalida, NichoSector, PerfilDestinatario
 from src.output.schema import NuevaMenteOutput
 from src.validation.models import FidelityEvaluation
 
 
 def assemble_output(
     doc_id: str,
-    perfil: str,
-    formato: str,
-    nivel_detalle: str,
+    perfil: PerfilDestinatario,
+    formato: FormatoSalida,
     contenido: GeneratedContent | None,
     fidelidad: FidelityEvaluation,
-    nicho: str | None = None,
+    nicho: NichoSector = "General",
 ) -> NuevaMenteOutput:
     """Compone un `NuevaMenteOutput` válido a partir de las salidas de
     Generation (COMP-06) y Validation (COMP-07).

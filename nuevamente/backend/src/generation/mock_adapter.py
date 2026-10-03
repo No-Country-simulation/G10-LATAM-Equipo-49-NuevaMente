@@ -10,7 +10,7 @@ import math
 from src.generation.models import ContenidoAdaptado
 from src.processing.models import DocumentChunk
 
-CHUNKS_POR_NIVEL: dict[str, int] = {"breve": 1, "estandar": 3, "profundo": 5}
+_CHUNKS_PER_ADAPTATION = 3
 _EXCERPT_CHARS = 400
 _WORDS_PER_MINUTE = 200
 MOCK_NOTICE = (
@@ -37,11 +37,10 @@ def build_mock_content(
     perfil: str,
     formato: str,
     nicho: str | None,
-    nivel_detalle: str,
     chunks: list[DocumentChunk],
 ) -> tuple[ContenidoAdaptado, list[DocumentChunk]]:
     """Devuelve el contenido mock y los chunks fuente utilizados."""
-    used = chunks[: CHUNKS_POR_NIVEL.get(nivel_detalle, CHUNKS_POR_NIVEL["estandar"])]
+    used = chunks[:_CHUNKS_PER_ADAPTATION]
 
     lines = [
         f"> ⚠️ {MOCK_NOTICE}",

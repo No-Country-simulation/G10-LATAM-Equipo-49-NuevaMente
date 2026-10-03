@@ -13,8 +13,8 @@ Resultado esperado: se muestra `document_id` y confirmación de que el
 original quedó en OCI.
 
 ## Paso 2 — Configurar generación
-Acción prevista: elegir perfil "Principiante", formato "Tutorial paso a
-paso", nivel "estándar".
+Acción prevista: elegir perfil "Principiante / Transición de Carrera",
+formato "Guía Práctica Paso a Paso (Tutorial)" y nicho "General".
 Resultado esperado: la interfaz muestra "generando..." y luego el
 contenido adaptado.
 

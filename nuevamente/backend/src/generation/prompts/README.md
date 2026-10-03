@@ -9,7 +9,7 @@ de cada prompt (variables, reglas, restricciones) está especificado en la
 Fase 15 del Plan Técnico y debe copiarse ahí como implementación futura.
 
 - `generacion_v1.txt` (PROMPT-001) — generación de contenido adaptado.
-  Variables: `{contexto}`, `{perfil}`, `{formato}`, `{nicho}`, `{nivel_detalle}`.
+  Variables: `{contexto}`, `{perfil}`, `{formato}`, `{nicho}`.
 - `verificacion_v1.txt` (PROMPT-002) — verificación de un claim contra el
   contexto fuente. Variables: `{claim}`, `{contexto_fuente}`.
 
