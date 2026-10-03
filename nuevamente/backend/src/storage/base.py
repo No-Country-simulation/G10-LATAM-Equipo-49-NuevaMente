@@ -5,6 +5,7 @@ implementación (OCI real o mock) debe cumplir este `Protocol`; ningún otro
 componente debe conocer el SDK de OCI directamente (RNF-005).
 """
 from typing import Protocol
+
 from pydantic import BaseModel
 
 

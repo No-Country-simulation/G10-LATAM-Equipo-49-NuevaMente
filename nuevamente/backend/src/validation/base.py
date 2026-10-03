@@ -1,5 +1,6 @@
 """Contrato del servicio de validación de fidelidad (COMP-07)."""
 from typing import Protocol
+
 from src.validation.models import FidelityEvaluation
 
 

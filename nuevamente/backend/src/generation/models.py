@@ -7,6 +7,7 @@ from pydantic import BaseModel
 
 from src.generation.profiles import FormatoSalida, NichoSector, PerfilDestinatario
 
+
 class AdaptationRequest(BaseModel):
     """Parámetros de una solicitud de generación adaptada."""
 
