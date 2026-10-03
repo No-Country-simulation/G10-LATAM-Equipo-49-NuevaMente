@@ -2,6 +2,11 @@ name: CI
 
 # Lint + verificación de imports + tests. Los tests corren con proveedores en
 # modo mock (sin credenciales ni red).
+#
+# Este workflow vive en la RAÍZ del repositorio a propósito: GitHub Actions solo
+# lee `.github/workflows/` en la raíz. Estando en `nuevamente/.github/workflows/`
+# nunca se ejecutó (confirmado: `gh workflow list` solo mostraba el workflow
+# viejo "CI (contract-only)" y sus runs fallaban).
 
 on:
   push:
@@ -14,7 +19,8 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: backend
+        # develop anida el proyecto en `nuevamente/`; las rutas de abajo son relativas a esto.
+        working-directory: nuevamente/backend
     steps:
       - uses: actions/checkout@v4
 
@@ -22,10 +28,10 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-          cache: "pip"
+          cache: pip
           cache-dependency-path: |
-            backend/requirements.txt
-            backend/requirements-dev.txt
+            nuevamente/backend/requirements.txt
+            nuevamente/backend/requirements-dev.txt
 
       - name: Instalar dependencias
         run: pip install -r requirements-dev.txt

@@ -129,7 +129,7 @@ def test_pdf_with_password_gives_clear_error():
 
 # ---------------------------------------------------------------------- router
 def test_router_txt():
-    result = IngestionRouter().ingest("notas.txt", "Hola mundo".encode())
+    result = IngestionRouter().ingest("notas.txt", b"Hola mundo")
     assert re.fullmatch(r"doc_[0-9a-f]{12}", result.document_id)
     assert result.file_type == "txt"
     assert result.raw_text == "Hola mundo"

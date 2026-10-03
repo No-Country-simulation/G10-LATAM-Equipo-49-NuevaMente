@@ -15,5 +15,6 @@ def get_storage_client() -> StorageClient:
     if provider == "oci":
         return OCIStorageClient()
     raise NuevaMenteError(
-        f"STORAGE_PROVIDER inválido: {settings.STORAGE_PROVIDER!r}. Valores válidos: 'mock' u 'oci'."
+        f"STORAGE_PROVIDER inválido: {settings.STORAGE_PROVIDER!r}. "
+        "Valores válidos: 'mock' u 'oci'."
     )

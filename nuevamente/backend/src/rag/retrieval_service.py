@@ -3,7 +3,6 @@
 Combina `EmbeddingProvider.embed_query` + `VectorStore.query` para obtener
 el contexto relevante a una solicitud de adaptación.
 """
-from src.rag.base import RetrievalService
 from src.vectorstore.base import VectorStoreMatch
 
 

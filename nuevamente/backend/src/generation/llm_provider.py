@@ -1,24 +1,25 @@
-"""Contrato del proveedor de embeddings (COMP-03).
+"""Contrato del proveedor de LLM de generación (COMP-05).
 
-Fuente: instrucciones de arquitectura + DT-09 (Gemini propuesto. Cualquier proveedor concreto (Gemini, mock, u otro)
-debe implementar este `Protocol` para que el resto del pipeline (COMP-04,
-COMP-05) sea independiente del proveedor (RNF-005).
+Fuente: instrucciones de arquitectura + DT-09 (Gemini propuesto). Cualquier
+proveedor concreto (Gemini, mock u otro) debe implementar este `Protocol` para
+que el resto del pipeline (COMP-04, COMP-06) sea independiente del proveedor
+(RNF-005).
+
+Nota: el contrato de *embeddings* (`EmbeddingProvider`) vive en
+`src/embeddings/base.py`. Este módulo es exclusivamente el de *generación*.
 """
 from typing import Protocol
 
 
-class EmbeddingProvider(Protocol):
-    """Genera vectores de embedding para texto."""
+class LLMProvider(Protocol):
+    """Genera texto a partir de un prompt."""
 
-    def embed_documents(self, texts: list[str]) -> list[list[float]]:
-        """Genera un vector por cada texto de `texts`, en el mismo orden.
+    def generate(self, prompt: str, temperature: float = 0.3) -> str:
+        """Devuelve la respuesta del modelo para `prompt`.
 
-        Implementación futura.
-        """
-        ...
-
-    def embed_query(self, text: str) -> list[float]:
-        """Genera el vector de una consulta individual (para retrieval).
+        Lanza:
+            LLMProviderError: si la llamada falla o agota los reintentos
+                (traducida por la implementación, no por este contrato).
 
         Implementación futura.
         """
