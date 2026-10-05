@@ -1,8 +1,10 @@
 """Pantalla 3 — loading_view (UX-001): esperar el resultado (polling)."""
+
 import time
 
-import api_client
 import streamlit as st
+
+import api_client
 
 POLL_SECONDS = 1.0
 TIMEOUT_SECONDS = 60
@@ -42,4 +44,3 @@ def render() -> None:
     st.session_state["error_back"] = "selection"
     st.session_state["stage"] = "error"
     st.rerun()
-
