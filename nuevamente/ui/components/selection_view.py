@@ -1,7 +1,6 @@
 """Pantalla 2 — selection_view (UX-001): elegir perfil, formato y nicho."""
-import streamlit as st
-
 import api_client
+import streamlit as st
 
 PERFILES = [
     "Principiante / Transición de Carrera",

@@ -1,9 +1,8 @@
 """Pantalla 3 — loading_view (UX-001): esperar el resultado (polling)."""
 import time
 
-import streamlit as st
-
 import api_client
+import streamlit as st
 
 POLL_SECONDS = 1.0
 TIMEOUT_SECONDS = 60
