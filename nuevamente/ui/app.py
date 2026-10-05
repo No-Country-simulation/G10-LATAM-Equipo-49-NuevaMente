@@ -1,13 +1,15 @@
-"""Punto de entrada de la interfaz web de NuevaMente.
+"""Punto de entrada de la interfaz web (COMP-10, FE-UI-005).
 
-Ejecutar desde la raíz del proyecto:
+Ejecutar desde la raíz del proyecto:  streamlit run ui/app.py
 
-    streamlit run ui/app.py
+Compone las 5 pantallas de UX-001 (upload → selección → loading → resultado →
+error) con una pequeña máquina de estados en `st.session_state["stage"]`.
 """
 
 from pathlib import Path
 
 import streamlit as st
+
 from components import (
     error_view,
     loading_view,

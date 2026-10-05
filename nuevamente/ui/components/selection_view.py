@@ -1,6 +1,8 @@
 """Pantalla 2 — selection_view (UX-001): elegir perfil, formato y nicho."""
-import api_client
+
 import streamlit as st
+
+import api_client
 
 PERFILES = [
     "Principiante / Transición de Carrera",
@@ -46,10 +48,14 @@ def render() -> None:
     col_generate, col_new = st.columns(2)
     if col_generate.button("Generar contenido adaptado", type="primary"):
         try:
-            job = api_client.request_adapt(ingest["document_id"], perfil, formato, nicho)
+            job = api_client.request_adapt(
+                ingest["document_id"], perfil, formato, nicho
+            )
         except api_client.ApiError as exc:
             st.session_state["error"] = {"code": exc.code, "message": exc.message}
-            st.session_state["error_back"] = "upload" if exc.status_code == 404 else "selection"
+            st.session_state["error_back"] = (
+                "upload" if exc.status_code == 404 else "selection"
+            )
             st.session_state["stage"] = "error"
             st.rerun()
             return

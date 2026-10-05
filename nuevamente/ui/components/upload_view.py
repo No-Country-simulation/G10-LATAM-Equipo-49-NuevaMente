@@ -2,8 +2,9 @@
 
 import html
 
-import api_client
 import streamlit as st
+
+import api_client
 
 MAX_MB = 10
 
