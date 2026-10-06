@@ -1,7 +1,7 @@
-Nombre del equipo:
+Nombre del equipo: COLBOLMEXPAR 4U
 Nombre de todos los integrantes;
-Link de LinkedIn de cada participante (si tiene);
-Nombre del proyecto / idea.
+
+Nombre del proyecto / Nuevamente.
 
 Viviana Hurtado
 UX/UI Designer
@@ -11,9 +11,7 @@ Pedro Orozco
 Cloud Developer
 Link de LinkedIn: www.linkedin.com/in/pedroroz
 
-Jose Eduardo Chávez
-QA Tester
-Link de LinkedIn 
+
 
 Rodrigo Reyes
 Vibe Coder
@@ -23,13 +21,20 @@ Osvaldo Acosta
 Software Engineer
 Link de LinkedIn: www.linkedin.com/in/osvaldo-acosta-813024163
 
+Diana Ocaña Martínez
+Backend Developer / Scrum developer
+linkedin.com/in/diana-ocaña-martínez-54b218205
+
 Fernando Manuel Enciso
 Backend Developer
 Link de LinkedIn 
 
 Miguel Angel De La Cruz Lazaro
 Backend Developer
+
+Jose Eduardo Chávez
+QA Tester
 Link de LinkedIn 
 
-Diana Ocaña Martínez
-Backend Developer
+
+
