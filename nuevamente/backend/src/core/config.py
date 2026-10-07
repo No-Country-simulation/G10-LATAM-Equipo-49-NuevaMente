@@ -56,6 +56,7 @@ class Settings(BaseSettings):
     LLM_MAX_RETRIES: int = 1            # Fase 14
 
     # Vector Store — DT-02 (pendiente: Semana 2)
+    VECTORSTORE_PROVIDER: str = "memory"    # "memory" | "chroma"
     CHROMA_PERSIST_DIR: str = "./data/chroma"
 
     # Almacenamiento de objetos — DT-07, REQ-18
