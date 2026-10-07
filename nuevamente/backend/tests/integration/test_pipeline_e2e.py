@@ -41,7 +41,10 @@ def test_full_flow_returns_valid_partial_output(client, storage_dir):
     assert output.evaluacion_calidad.fidelidad_score is not None
     assert 0.0 <= output.evaluacion_calidad.fidelidad_score <= 1.0
     assert output.evaluacion_calidad.observaciones
-    assert "concepto0" in output.contenido_adaptado.cuerpo
+    # La query califica mejor con el chunk más relacionado ("# Contenedores");
+    # el filtro de umbral (RETRIEVAL_MIN_SCORE) devuelve solo los matches
+    # suficientemente similares.
+    assert "Contenedores" in output.contenido_adaptado.cuerpo
     assert output.metadatos.sources
     assert all(s.chunk_id.startswith(document["document_id"]) for s in output.metadatos.sources)
 
@@ -59,7 +62,10 @@ def test_detail_level_is_ignored_and_default_source_count_is_stable(client):
         result = client.get(f"/adapt/{job_id}").json()
         counts.append(len(result["metadatos"]["sources"]))
         assert "nivel_detalle" not in result["metadatos"]
-    assert counts == [3, 3]
+    # Con el filtro de umbral, solo los matches >= RETRIEVAL_MIN_SCORE
+    # llegan al output; el conteo es estable (1) independientemente del
+    # `nivel_detalle` legacy.
+    assert counts == [1, 1]
 
 
 def test_same_document_can_be_adapted_with_other_profile(client):

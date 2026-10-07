@@ -133,3 +133,23 @@ def test_retrieval_end_to_end_con_mock_y_memoria():
 
     assert matches[0].chunk_id == "c1"
     assert matches[0].page == 1
+
+
+def test_fallo_del_store_se_convierte_en_storage_error():
+    """El cableado hacia similarity_search hace que un fallo del store
+    llegue como StorageError (OUT-005), no crudo."""
+    from src.core.exceptions import StorageError
+
+    class _BrokenStore:
+        def add(self, *args, **kwargs) -> None:
+            pass
+
+        def query(self, *args, **kwargs):
+            raise RuntimeError("colección no inicializada")
+
+    service = DefaultRetrievalService(store=_BrokenStore(), embedder=_SpyEmbedder())
+
+    import pytest
+
+    with pytest.raises(StorageError):
+        service.retrieve(doc_id="doc_1", perfil="docente")
