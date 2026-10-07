@@ -133,12 +133,15 @@ def test_factory_rechaza_proveedor_desconocido(monkeypatch):
         get_vectorstore()
 
 
-def test_factory_chroma_no_implementado(monkeypatch):
-    """`chroma` se declara pero no se implementa todavía (DT-02).
-
-    Falla explícitamente en vez de devolver un stub que responda `None`.
-    """
+def test_factory_chroma_implementado(monkeypatch, tmp_path):
+    """`chroma` ahora está implementado (DT-02) y devuelve ChromaVectorStore."""
     monkeypatch.setenv("VECTORSTORE_PROVIDER", "chroma")
+    monkeypatch.setenv("CHROMA_PERSIST_DIR", str(tmp_path / "chroma"))
+    monkeypatch.setenv("EMBEDDING_PROVIDER", "gemini")
+    monkeypatch.setenv("EMBEDDING_DIMENSIONS", "768")
+    monkeypatch.setenv("GEMINI_API_KEY", "fake-key")
     get_vectorstore.cache_clear()
-    with pytest.raises(NuevaMenteError, match="DT-02"):
-        get_vectorstore()
+
+    from src.vectorstore.store import ChromaVectorStore
+    store = get_vectorstore()
+    assert isinstance(store, ChromaVectorStore)

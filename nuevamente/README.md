@@ -205,12 +205,12 @@ ruff check --config pyproject.toml src tests ../ui     # lint (el mismo que corr
 
 ```
 backend/src/{core,db,api,ingestion,processing,storage,generation,output}   ← implementado
-backend/src/{embeddings,vectorstore,rag,validation}                        ← contratos (Semana 2-3)
+backend/src/{embeddings,vectorstore,rag,validation}                        ← implementado (Semana 2-3)
 backend/tests/{unit,integration,fixtures}      ui/{app.py,api_client.py,components/}
 ```
 
 ## Limitaciones conocidas
-- `/adapt` es mock: no hay RAG, LLM ni score de fidelidad (`fidelidad_score` = `null`, estado `PARTIAL`).
+- `/adapt` usa mock para generación LLM: no hay LLM real ni score de fidelidad con LLM-juez (`fidelidad_score` = `null`, estado `PARTIAL`). RAG retrieval y embeddings reales **sí funcionan** con ChromaDB persistente.
 - Los PDF escaneados (sin texto) se rechazan; no hay OCR.
 - `STORAGE_PROVIDER=oci` está implementado pero **no se ha probado contra un bucket real**.
 - Las rutas relativas de `.env` (`./data/...`) se resuelven desde la raíz del proyecto, no desde el directorio actual.

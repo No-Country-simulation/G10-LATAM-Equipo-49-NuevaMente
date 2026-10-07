@@ -24,10 +24,9 @@ def get_vectorstore() -> VectorStore:
 
         return InMemoryVectorStore()
     if provider == "chroma":
-        raise NuevaMenteError(
-            "VECTORSTORE_PROVIDER='chroma' todavía no está implementado (DT-02). "
-            "Usá 'memory' por ahora."
-        )
+        from src.vectorstore.store import ChromaVectorStore
+
+        return ChromaVectorStore()
     raise NuevaMenteError(
         f"VECTORSTORE_PROVIDER inválido: {settings.VECTORSTORE_PROVIDER!r}. "
         "Valores válidos: 'memory' o 'chroma'."

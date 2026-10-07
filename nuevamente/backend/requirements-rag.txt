@@ -1,0 +1,10 @@
+# Dependencias opcionales para RAG con ChromaDB y OCI
+# Instalar con: pip install -r requirements-rag.txt
+-r requirements.txt
+
+# ChromaDB embebido (DT-02) — extra pesado (~200 MB), fuera de requirements.txt
+# para no penalizar el CI. Necesario solo cuando VECTORSTORE_PROVIDER=chroma.
+chromadb>=0.5,<1.0
+
+# OCI Object Storage (DT-07) — solo necesario con STORAGE_PROVIDER=oci
+oci>=2.130,<3.0
