@@ -112,8 +112,7 @@ Usuario elige perfil/formato → POST /adapt → retrieval top-k → prompt+cont
 
 ## 8. Decisiones técnicas aún abiertas (heredadas del Plan Técnico, Fase 20)
 
-- 🔴 **Bloqueante:** proveedor de LLM/embeddings (Gemini propuesto, DT-09)
-  no confirmado formalmente por el equipo.
+- ✅ **Resuelto:** proveedor de LLM/embeddings (Gemini, DT-09) — implementado con `GeminiEmbeddingProvider`, `GeminiLLMProvider`, factory `get_llm_provider()`, y `MockLLMProvider` como fallback. Configurable vía `LLM_PROVIDER`/`EMBEDDING_PROVIDER` en `.env`.
 - ⚠️ Roles Scrum de la sección 10.1 del Plan Técnico sin reconciliar
   (quién cubre Data/RAG Engineer y AI/LLM Engineer).
 - 🟠 Documentos de referencia para los 3 escenarios de demo (DEMO-000)

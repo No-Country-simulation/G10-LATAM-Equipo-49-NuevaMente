@@ -50,8 +50,9 @@ class Settings(BaseSettings):
     LLM_PROVIDER: str = "mock"          # "gemini" | "mock"
     EMBEDDING_PROVIDER: str = "mock"    # "gemini" | "mock"
     GEMINI_API_KEY: str | None = None
-    GEMINI_MODEL: str | None = None
-    GEMINI_EMBEDDING_MODEL: str | None = None
+    GEMINI_MODEL: str = "gemini-2.5-flash"
+    GEMINI_EMBEDDING_MODEL: str = "text-embedding-004"
+    EMBEDDING_DIMENSIONS: int = 768     # dimensiones del modelo de embeddings activo
     LLM_TIMEOUT_SECONDS: int = 30       # Fase 14
     LLM_MAX_RETRIES: int = 1            # Fase 14
 
@@ -83,6 +84,19 @@ class Settings(BaseSettings):
             raise ValueError("CHUNK_OVERLAP debe ser menor que CHUNK_SIZE")
         if self.MAX_FILE_SIZE_MB <= 0:
             raise ValueError("MAX_FILE_SIZE_MB debe ser positivo")
+        return self
+
+    @model_validator(mode="after")
+    def validate_ai_providers(self) -> Self:
+        """Si el proveedor es gemini, exige GEMINI_API_KEY."""
+        if self.LLM_PROVIDER.lower() == "gemini" and not self.GEMINI_API_KEY:
+            raise ValueError(
+                "LLM_PROVIDER='gemini' requiere GEMINI_API_KEY en .env o variables de entorno"
+            )
+        if self.EMBEDDING_PROVIDER.lower() == "gemini" and not self.GEMINI_API_KEY:
+            raise ValueError(
+                "EMBEDDING_PROVIDER='gemini' requiere GEMINI_API_KEY en .env o variables de entorno"
+            )
         return self
 
     def resolve_path(self, value: str) -> Path:

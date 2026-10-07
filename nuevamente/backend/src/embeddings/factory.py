@@ -3,13 +3,20 @@
 Permite intercambiar Gemini ↔ Mock vía `settings.EMBEDDING_PROVIDER` sin
 tocar el resto del pipeline (RNF-005).
 """
+from functools import lru_cache
+
 from src.core.config import get_settings
 from src.core.exceptions import NuevaMenteError
 from src.embeddings.base import EmbeddingProvider
 
 
+@lru_cache
 def get_embedding_provider() -> EmbeddingProvider:
     """Devuelve el `EmbeddingProvider` según `settings.EMBEDDING_PROVIDER`.
+
+    La instancia está cacheada a propósito: la ingesta y el retrieval deben
+    operar sobre el MISMO proveedor durante la vida del proceso. Los tests que
+    necesiten aislar el estado deben llamar a `get_embedding_provider.cache_clear()`.
 
     Lanza:
         NuevaMenteError: si el valor no es un proveedor conocido.
