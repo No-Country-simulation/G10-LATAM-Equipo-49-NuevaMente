@@ -49,6 +49,7 @@ from src.rag.retrieval_service import DefaultRetrievalService
 from src.storage.base import StorageClient
 from src.storage.factory import get_storage_client
 from src.storage.upload import upload_original, upload_result_json
+from src.validation.fidelity_checker import DefaultValidationService
 from src.vectorstore.factory import get_vectorstore
 from src.vectorstore.store import persist_chunks
 
@@ -199,7 +200,7 @@ class PipelineOrchestrator:
                 self._store_result(output, document.storage_object_name, request, job_id)
             return output
 
-        # RAG real: retrieval + context_builder
+        # RAG real: retrieval + context_builder + validación
         # NoContextError se propaga: es regla de negocio (RF-009), no fallo técnico
         retrieval_service = DefaultRetrievalService()
         # Incluir el primer chunk como "tema" para que la query tenga términos
@@ -211,12 +212,9 @@ class PipelineOrchestrator:
             nicho=request.nicho,
             tema=tema_para_retrieval,
         )
-        build_context(matches)  # lanza NoContextError si no hay matches sobre umbral
+        contexto = build_context(matches)  # lanza NoContextError si no hay matches sobre umbral
 
-        # El contexto se usa como fuente; mantenemos PARTIAL y MOCK_NOTICE
-        # hasta que integre el LLM real y validación de fidelidad (paso 4).
-        # Convertir matches a objetos compatibles con build_mock_content
-        # (necesitan .id, .text, .page, .section)
+        # Generar contenido (mock) y validar fidelidad contra el contexto
         mock_chunks = [
             type(
                 "_MockChunk",
@@ -228,6 +226,11 @@ class PipelineOrchestrator:
         content, used = build_mock_content(
             request.perfil, request.formato, request.nicho, mock_chunks
         )
+
+        # Paso 4: validación de fidelidad
+        validation_service = DefaultValidationService()
+        fidelity_eval = validation_service.validate(content.cuerpo, contexto)
+
         output = NuevaMenteOutput(
             status="PARTIAL",
             metadatos=Metadatos(
@@ -239,7 +242,9 @@ class PipelineOrchestrator:
             ),
             contenido_adaptado=content,
             evaluacion_calidad=EvaluacionCalidad(
-                fidelidad_score=None, observaciones=[MOCK_NOTICE]
+                fidelidad_score=fidelity_eval.score,
+                claims_no_soportados=fidelity_eval.claims_no_soportados,
+                observaciones=fidelity_eval.observaciones or [MOCK_NOTICE],
             ),
         )
 

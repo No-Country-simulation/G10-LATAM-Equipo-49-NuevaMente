@@ -37,7 +37,9 @@ def test_full_flow_returns_valid_partial_output(client, storage_dir):
     assert output.status == "PARTIAL"
     assert output.metadatos.doc_id == document["document_id"]
     assert output.metadatos.nicho == "Fintech"
-    assert output.evaluacion_calidad.fidelidad_score is None
+    # Paso 4: validación de fidelidad implementada → score numérico en [0,1]
+    assert output.evaluacion_calidad.fidelidad_score is not None
+    assert 0.0 <= output.evaluacion_calidad.fidelidad_score <= 1.0
     assert output.evaluacion_calidad.observaciones
     assert "concepto0" in output.contenido_adaptado.cuerpo
     assert output.metadatos.sources
