@@ -5,10 +5,9 @@ aquí (regla de COMP-11: "main.py solo orquesta").
 
 Estado de implementación:
     - Ingesta (RF-001): COMPLETA → validar, extraer, limpiar, chunkear,
-      subir el original y persistir documento + chunks.
-    - Adaptación (`/adapt`): MOCK → usa los primeros chunks reales; el
-      retrieval (RAG), el LLM y la validación de fidelidad se integran en
-      Semana 2 y 3 sin cambiar este contrato.
+      subir el original y persistir documento + chunks + indexar en vectorstore.
+    - Adaptación (`/adapt`): RAG real con fallback a mock. El retrieval, el LLM
+      y la validación de fidelidad se integran progresivamente.
 """
 from datetime import UTC, datetime
 
@@ -31,6 +30,8 @@ from src.db.session import (
     save_job_result,
     update_job_status,
 )
+from src.embeddings.embed_chunks import embed_chunks
+from src.embeddings.factory import get_embedding_provider
 from src.generation.mock_adapter import MOCK_NOTICE, build_mock_content
 from src.generation.profiles import FORMATOS_MVP, NICHOS_MVP, PERFILES_MVP
 from src.ingestion.router import IngestionRouter
@@ -43,9 +44,13 @@ from src.output.schema import (
 )
 from src.processing.chunking import chunk_text
 from src.processing.cleaning import prepare_document_text
+from src.rag.context_builder import build_context
+from src.rag.retrieval_service import DefaultRetrievalService
 from src.storage.base import StorageClient
 from src.storage.factory import get_storage_client
 from src.storage.upload import upload_original, upload_result_json
+from src.vectorstore.factory import get_vectorstore
+from src.vectorstore.store import persist_chunks
 
 log = get_logger(__name__)
 
@@ -101,6 +106,12 @@ class PipelineOrchestrator:
         with log_stage(log, "persist", document_id=doc_id):
             save_document(record, chunks)
 
+        # --- Paso 3.5: indexar chunks en el vectorstore ---
+        with log_stage(log, "embeddings", document_id=doc_id):
+            vectors = embed_chunks(chunks, get_embedding_provider())
+        with log_stage(log, "vectorstore_index", document_id=doc_id):
+            persist_chunks(chunks, vectors, get_vectorstore())
+
         return IngestResponse(
             document_id=doc_id,
             file_type=result.file_type,
@@ -146,11 +157,13 @@ class PipelineOrchestrator:
     def run_adaptation(
         self, request: AdaptRequest, job_id: str | None = None
     ) -> NuevaMenteOutput:
-        """Genera el resultado MOCK y, si hay `job_id`, guarda el JSON en el almacenamiento.
+        """Genera el resultado usando RAG con fallback a mock, y si hay `job_id`,
+        guarda el JSON en el almacenamiento.
 
         Lanza:
             DocumentNotFoundError: si `request.document_id` no existe.
-            NoContextError: si el documento no tiene chunks.
+            NoContextError: si el retrieval no encuentra contexto suficiente
+                (regla de negocio RF-009 — NO se degrada a mock).
         """
         document = get_document(request.document_id)
         if document is None:
@@ -161,8 +174,59 @@ class PipelineOrchestrator:
         if not chunks:
             raise NoContextError("El documento no tiene fragmentos disponibles.")
 
+        store = get_vectorstore()
+        # Fallback técnico: el documento existe pero no está indexado (índice vacío)
+        if store.count(doc_id=request.document_id) == 0:
+            content, used = build_mock_content(
+                request.perfil, request.formato, request.nicho, chunks
+            )
+            output = NuevaMenteOutput(
+                status="PARTIAL",
+                metadatos=Metadatos(
+                    doc_id=request.document_id,
+                    perfil=request.perfil,
+                    formato=request.formato,
+                    nicho=request.nicho,
+                    sources=[Source(chunk_id=c.id, page=c.page) for c in used],
+                ),
+                contenido_adaptado=content,
+                evaluacion_calidad=EvaluacionCalidad(
+                    fidelidad_score=None, observaciones=[MOCK_NOTICE]
+                ),
+            )
+
+            if job_id is not None:
+                self._store_result(output, document.storage_object_name, request, job_id)
+            return output
+
+        # RAG real: retrieval + context_builder
+        # NoContextError se propaga: es regla de negocio (RF-009), no fallo técnico
+        retrieval_service = DefaultRetrievalService()
+        # Incluir el primer chunk como "tema" para que la query tenga términos
+        # del documento y los embeddings mock produzcan match (no hay semántica).
+        tema_para_retrieval = chunks[0].text[:200] if chunks else None
+        matches = retrieval_service.retrieve(
+            doc_id=request.document_id,
+            perfil=request.perfil,
+            nicho=request.nicho,
+            tema=tema_para_retrieval,
+        )
+        build_context(matches)  # lanza NoContextError si no hay matches sobre umbral
+
+        # El contexto se usa como fuente; mantenemos PARTIAL y MOCK_NOTICE
+        # hasta que integre el LLM real y validación de fidelidad (paso 4).
+        # Convertir matches a objetos compatibles con build_mock_content
+        # (necesitan .id, .text, .page, .section)
+        mock_chunks = [
+            type(
+                "_MockChunk",
+                (),
+                {"id": m.chunk_id, "text": m.text, "page": m.page, "section": None},
+            )()
+            for m in matches[:3]
+        ]
         content, used = build_mock_content(
-            request.perfil, request.formato, request.nicho, chunks
+            request.perfil, request.formato, request.nicho, mock_chunks
         )
         output = NuevaMenteOutput(
             status="PARTIAL",
@@ -171,7 +235,7 @@ class PipelineOrchestrator:
                 perfil=request.perfil,
                 formato=request.formato,
                 nicho=request.nicho,
-                sources=[Source(chunk_id=c.id, page=c.page) for c in used],
+                sources=[Source(chunk_id=m.chunk_id, page=m.page) for m in matches[:3]],
             ),
             contenido_adaptado=content,
             evaluacion_calidad=EvaluacionCalidad(
