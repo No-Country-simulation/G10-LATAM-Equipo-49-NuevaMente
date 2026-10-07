@@ -4,20 +4,24 @@ from pathlib import Path
 import pytest
 
 from src.core.config import get_settings
+from src.vectorstore.factory import get_vectorstore
 
 
 @pytest.fixture(autouse=True)
 def isolated_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("DATABASE_URL", f"sqlite:///{tmp_path / 'test.db'}")
     monkeypatch.setenv("STORAGE_PROVIDER", "mock")
+    monkeypatch.setenv("VECTORSTORE_PROVIDER", "memory")
     monkeypatch.setenv("MOCK_STORAGE_DIR", str(tmp_path / "storage"))
     monkeypatch.setenv("MAX_FILE_SIZE_MB", "10")
     monkeypatch.setenv("CHUNK_SIZE", "800")
     monkeypatch.setenv("CHUNK_OVERLAP", "150")
     monkeypatch.setenv("MAX_DOCUMENT_CHARS", "2000000")
     get_settings.cache_clear()
+    get_vectorstore.cache_clear()
     yield
     get_settings.cache_clear()
+    get_vectorstore.cache_clear()
 
 
 @pytest.fixture
