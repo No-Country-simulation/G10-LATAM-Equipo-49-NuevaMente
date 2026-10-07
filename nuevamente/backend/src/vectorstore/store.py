@@ -1,4 +1,5 @@
 """Persistencia de embeddings en el Vector Store (BE-RAG-007)."""
+from src.core.exceptions import NuevaMenteError
 from src.processing.models import DocumentChunk
 from src.vectorstore.base import VectorStore
 
@@ -27,6 +28,16 @@ def persist_chunks(
 ) -> None:
     """Empaqueta `chunks` + `vectors` y los persiste vía `store.add(...)`.
 
-    Implementación futura.
+    Lanza:
+        NuevaMenteError: si la persistencia falla.
     """
-    ...
+    if not chunks:
+        return
+    try:
+        doc_id = chunks[0].doc_id
+        chunk_ids = [chunk.id for chunk in chunks]
+        metadatas = [{"page": chunk.page} for chunk in chunks]
+        documents = [chunk.text for chunk in chunks]
+        store.add(doc_id, chunk_ids, vectors, metadatas, documents)
+    except Exception as exc:
+        raise NuevaMenteError(f"Fallo al persistir chunks en el vectorstore: {exc}") from exc
