@@ -10,7 +10,7 @@ Todos los datos son reproducibles con los comandos indicados, verificados contra
 a fecha de redacción.
 
 > **Actualización 2026-10-08:** el conteo de §1 sigue vigente (12 commits exclusivos, 107
-> archivos, merge-base `f9bd75a`). Korregido: Gemini ya no es stub en ambas ramas — `develop`
+> archivos, merge-base `f9bd75a`). Corregido: Gemini ya no es stub en ambas ramas — `develop`
 > cerró DT-09 con un proveedor real (§6.6 actualizado), y el recuento de stubs en `develop`
 > bajó de 21 a 9 (§5). El análisis de madurez del RAG en `OCI` (§6 y §7) sigue vigente,
 > porque `OCI` no incorporó el proveedor real.
