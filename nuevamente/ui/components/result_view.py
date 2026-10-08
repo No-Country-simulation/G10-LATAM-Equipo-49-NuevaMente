@@ -33,7 +33,7 @@ def _render_styles() -> None:
             }
 
             .nm-results-description {
-                font-size: 11px;
+                font-size: 16px;
                 line-height: 1.4;
                 color: #666666;
             }
@@ -69,7 +69,7 @@ def _render_styles() -> None:
                 display: flex;
                 align-items: center;
                 gap: 8px;
-                font-size: 11px;
+                font-size: 16px;
                 color: #333333;
                 box-sizing: border-box;
             }
@@ -93,7 +93,7 @@ def _render_styles() -> None:
                 padding: 24px 28px;
                 box-sizing: border-box;
                 color: #222222;
-                font-size: 11px;
+                font-size: 16px;
                 line-height: 1.6;
             }
 
@@ -181,7 +181,7 @@ def _render_styles() -> None:
                 display: flex;
                 align-items: center;
                 gap: 8px;
-                font-size: 11px;
+                font-size: 16px;
                 color: #666666;
                 margin-bottom: 12px;
             }
@@ -215,13 +215,13 @@ def _render_styles() -> None:
             }
 
             .nm-config-label {
-                font-size: 9px;
+                font-size: 16px;
                 color: #888888;
                 margin-bottom: 2px;
             }
 
             .nm-config-value {
-                font-size: 10px;
+                font-size: 16px;
                 line-height: 1.3;
                 color: #222222;
                 word-break: break-word;
@@ -235,7 +235,7 @@ def _render_styles() -> None:
                 display: flex;
                 align-items: center;
                 gap: 8px;
-                font-size: 11px;
+                font-size: 16px;
                 color: #666666;
                 margin-bottom: 9px;
             }
@@ -254,7 +254,7 @@ def _render_styles() -> None:
                 padding: 6px 8px;
                 background: #e9e9e9;
                 color: #222222;
-                font-size: 9px;
+                font-size: 16px;
                 cursor: pointer;
                 text-align: center;
                 box-sizing: border-box;
@@ -271,7 +271,7 @@ def _render_styles() -> None:
                 border-radius: 7px;
                 background: #f5f5f5;
                 color: #666666;
-                font-size: 10px;
+                font-size: 16px;
                 line-height: 1.4;
             }
 
@@ -292,7 +292,7 @@ def _render_styles() -> None:
                 border-radius: 6px;
                 padding: 20px;
                 font-family: Consolas, Monaco, monospace;
-                font-size: 10px;
+                font-size: 16px;
                 line-height: 1.55;
                 color: #222222;
             }
