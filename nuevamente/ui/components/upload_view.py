@@ -12,9 +12,22 @@ MAX_MB = 10
 def render() -> None:
     """Renderiza la pantalla de carga."""
 
-    # ============================================================
-    # TÍTULO
-    # ============================================================
+    st.markdown(
+        """
+        <style>
+        /* Ocultar únicamente la ficha nativa del archivo de Streamlit */
+        [data-testid="stFileChip"] {
+            display: none !important;
+        }
+
+        /* Ocultar el contenedor de la ficha si queda vacío */
+        [data-testid="stFileUploader"] [data-testid="stFileChip"] {
+            display: none !important;
+        }
+        </style>
+        """,
+        unsafe_allow_html=True,
+    )
 
     st.markdown(
         '<div class="nm-page-title">Cargar archivo</div>',
@@ -29,15 +42,9 @@ def render() -> None:
         unsafe_allow_html=True,
     )
 
-    # ============================================================
-    # TARJETA DE CARGA
-    # ============================================================
-
     with st.container(border=True):
-
         # Los placeholders se crean primero para que el contenido
         # visual aparezca antes del uploader real de Streamlit.
-        # De esta forma el botón queda debajo del texto.
         icon_slot = st.empty()
         title_slot = st.empty()
         subtitle_slot = st.empty()
@@ -48,37 +55,24 @@ def render() -> None:
             label_visibility="collapsed",
         )
 
-        # --------------------------------------------------------
-        # ESTADO SIN ARCHIVO
-        # --------------------------------------------------------
-
         if uploaded is None:
-
             icon_slot.markdown(
                 '<div class="nm-upload-icon">↑</div>',
                 unsafe_allow_html=True,
             )
-
             title_slot.markdown(
                 '<div class="nm-upload-title">'
                 "Arrastra y suelta tu archivo aquí"
                 "</div>",
                 unsafe_allow_html=True,
             )
-
             subtitle_slot.markdown(
                 '<div class="nm-upload-subtitle">'
                 "o haz clic para seleccionar"
                 "</div>",
                 unsafe_allow_html=True,
             )
-
-        # --------------------------------------------------------
-        # ESTADO CON ARCHIVO
-        # --------------------------------------------------------
-
         else:
-
             filename = html.escape(uploaded.name)
 
             icon_slot.markdown(
@@ -97,10 +91,6 @@ def render() -> None:
                 f'<div class="nm-file-name">{filename}</div>',
                 unsafe_allow_html=True,
             )
-
-    # ============================================================
-    # RECOMENDACIONES
-    # ============================================================
 
     recommendations_html = """
 <div class="nm-recommendations">
@@ -123,10 +113,6 @@ def render() -> None:
         unsafe_allow_html=True,
     )
 
-    # ============================================================
-    # BOTÓN SIGUIENTE
-    # ============================================================
-
     st.markdown(
         '<div class="nm-next-row">',
         unsafe_allow_html=True,
@@ -138,29 +124,21 @@ def render() -> None:
         use_container_width=True,
         disabled=uploaded is None,
     ):
-
         try:
-
             result = api_client.ingest(
                 uploaded.getvalue(),
                 uploaded.name,
             )
-
             st.session_state["ingest"] = result
             st.session_state["stage"] = "selection"
-
             st.rerun()
-
         except api_client.ApiError as exc:
-
             st.session_state["error"] = {
                 "code": exc.code,
                 "message": exc.message,
             }
-
             st.session_state["error_back"] = "upload"
             st.session_state["stage"] = "error"
-
             st.rerun()
 
     st.markdown(

@@ -77,7 +77,7 @@ section[data-testid="stSidebar"] {
 
 
 
-    width: 220px !important;
+    width: 320px !important;
 
     min-width: 220px !important;
 
@@ -109,7 +109,7 @@ section[data-testid="stSidebar"] > div {
 
 section[data-testid="stSidebar"] img {
 
-    width: 145px !important;
+    width: 345px !important;
 
     max-width: 100% !important;
 
@@ -187,13 +187,13 @@ section[data-testid="stSidebar"] img {
 
 .step-circle {
 
-    width: 22px;
+    width: 42px;
 
-    height: 22px;
+    height: 42px;
 
 
 
-    min-width: 22px;
+    min-width: 42px;
 
 
 
@@ -213,7 +213,7 @@ section[data-testid="stSidebar"] img {
 
 
 
-    font-size: 11px;
+    font-size: 21px;
 
 }
 
@@ -221,7 +221,7 @@ section[data-testid="stSidebar"] img {
 
 .step-label {
 
-    font-size: 12px;
+    font-size: 22px;
 
 
 
@@ -477,7 +477,7 @@ h1 {
 
 
 
-    font-size: 11px;
+    font-size: 24px;
 
 
 
@@ -507,7 +507,7 @@ h1 {
 
 
 
-    font-size: 11px;
+    font-size: 22px;
 
 
 
@@ -877,7 +877,7 @@ h1 {
 
 
 
-    font-size: 9px !important;
+    font-size: 12px !important;
 
 
 
@@ -1025,7 +1025,7 @@ h1 {
 
 
 
-    font-size: 14px;
+    font-size: 24px;
 
 
 
@@ -1049,7 +1049,7 @@ h1 {
 
 
 
-    font-size: 9px;
+    font-size: 24px;
 
 
 
@@ -1133,7 +1133,7 @@ h1 {
 
 
 
-    font-size: 14px;
+    font-size: 24px;
 
 
 
@@ -1150,21 +1150,11 @@ h1 {
 
 
 .nm-file-name {
-
     text-align: center;
-
-
-
     color: #777777;
-
-
-
-    font-size: 10px;
-
-
-
-    margin-top: 4px;
-
+    font-size: 15px;
+    margin-top: 10px;
+    margin-bottom: 20px;
 }
 
 
@@ -1315,7 +1305,7 @@ h1 {
 
 
 
-    font-size: 11px;
+    font-size: 21px;
 
 
 
@@ -1337,7 +1327,7 @@ h1 {
 
 
 
-    font-size: 9px;
+    font-size: 20px;
 
 
 
