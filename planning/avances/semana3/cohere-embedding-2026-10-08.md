@@ -58,3 +58,13 @@ provocó que la prueba fallara. No se registra ni incluye la clave de API.
 ## Pruebas con la UI existente en el repo
 <img width="1315" height="531" alt="image" src="https://github.com/user-attachments/assets/8f22e01c-6417-4b53-910e-3f5e9d1b9139" />
 
+<img width="1340" height="596" alt="image" src="https://github.com/user-attachments/assets/eebd1ec6-7530-4157-a24f-59cba5b613da" />
+
+<img width="1345" height="634" alt="image" src="https://github.com/user-attachments/assets/93b06c1c-8cb6-41a0-b109-f417fb89142b" />
+
+<img width="1281" height="624" alt="image" src="https://github.com/user-attachments/assets/814e039a-e974-4e75-9ca3-7995fba2477c" />
+
+
+
+
+
