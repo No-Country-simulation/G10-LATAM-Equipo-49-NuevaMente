@@ -9,6 +9,12 @@ implementado y qué es solo contrato, dónde vive el RAG y qué tan maduro es.
 Todos los datos son reproducibles con los comandos indicados, verificados contra `origin/OCI`
 a fecha de redacción.
 
+> **Actualización 2026-10-08:** el conteo de §1 sigue vigente (12 commits exclusivos, 107
+> archivos, merge-base `f9bd75a`). Korregido: Gemini ya no es stub en ambas ramas — `develop`
+> cerró DT-09 con un proveedor real (§6.6 actualizado), y el recuento de stubs en `develop`
+> bajó de 21 a 9 (§5). El análisis de madurez del RAG en `OCI` (§6 y §7) sigue vigente,
+> porque `OCI` no incorporó el proveedor real.
+
 ---
 
 ## 1. Identidad de la rama
@@ -69,7 +75,7 @@ Lo que `OCI` aporta son las implementaciones concretas detrás de esos contratos
 |---|---|---|
 | `ingestion/` | `pdf_extractor`, `txt_extractor`, `md_extractor`, `router`, `validators` | `base.py` (`Protocol`) |
 | `processing/` | `chunking` (94 líneas), `cleaning`, `models` | — |
-| `embeddings/` | `providers/mock.py`, `factory.py`, `embed_chunks.py` | `providers/gemini.py` 🔴 stub en ambas ramas (DT-09) |
+| `embeddings/` | `providers/mock.py`, `factory.py`, `embed_chunks.py` | `providers/gemini.py` 🔴 stub solo en `OCI`; `develop` ya tiene Gemini real (DT-09 cerrado) |
 | `vectorstore/` | **`memory.py` (72 líneas) — coseno real** | `base.py`, `client.py`, `search.py`, `store.py` |
 | `rag/` | **`retrieval_service.py` (33)**, **`context_builder.py` (31)** | `base.py` (`Protocol`) |
 | `generation/` | `orchestrator.py`, `builders.py` (139), `profiles.py` | `llm_provider.py` (parcial) |
@@ -111,10 +117,11 @@ ramas y definen los `Protocol`. Lo que cambia es que en `OCI` tienen implementac
 
 ## 5. Qué implementa `OCI` que `develop` deja en stub
 
-Comparando los archivos con cuerpo `...` en `backend/src/`: **`develop` tiene 21, `OCI` tiene 12.**
+Comparando los archivos con cuerpo `...` en `backend/src/`: **`develop` tiene 9, `OCI` tiene 12.**
 
 De esos 12 de `OCI`, la mayoría son `Protocol` (donde `...` es correcto) más
-`embeddings/providers/gemini.py`, que es un stub **real en ambas ramas** — DT-09 sigue bloqueado.
+`embeddings/providers/gemini.py`, que sigue siendo un stub **en `OCI`** — **DT-09 permanece
+cerrado solo en `develop`**, no portado a `OCI`.
 
 Los **9 archivos** que `develop` deja en stub y `OCI` implementa:
 
@@ -182,13 +189,14 @@ Contraste con el storage de objetos, que sí decide por entorno
 entorno cargadas basta para activar el bucket real — no hay un `STORAGE_PROVIDER` explícito que
 lo haga visible.)*
 
-**6.6 — El proveedor real sigue pendiente.** `embeddings/providers/gemini.py` es un stub en
-`OCI` **y** en `develop`, por decisión explícita de la fase CONTRACT-ONLY. Mientras DT-09 no se
-cierre, el único path ejecutable es el mock.
+**6.6 — El proveedor real ya no es el bloqueante en `develop`, pero sí en `OCI`.**
+`embeddings/providers/gemini.py` sigue siendo un stub en `OCI`. En `develop`, en cambio, DT-09
+ya está cerrado: Gemini es real y usado por el pipeline. Mientras no se porte, el único path
+ejecutable en `OCI` es el mock.
 
-**Consecuencia práctica:** con la configuración por defecto el sistema demuestra que la
-plomería está conectada, no que recupere bien. Una evaluación honesta del retrieval necesita
-`EMBEDDING_PROVIDER=gemini` con credenciales reales, lo cual sigue bloqueado.
+**Consecuencia práctica:** con la configuración por defecto `OCI` demuestra que la
+plomería está conectada, no que recupere bien. Una evaluación honesta del retrieval en `OCI`
+necesita `EMBEDDING_PROVIDER=gemini` con credenciales reales, lo cual requiere portar DT-09.
 
 ---
 
@@ -220,7 +228,7 @@ No todo gana `OCI`. Estos casos resolved a favor de `develop`:
 
 En orden de esfuerzo, sin tocar la arquitectura:
 
-1. **Proveedor Gemini real** (cierra DT-09) → habilita evaluar si el retrieval recupera algo.
+1. **Portar el proveedor Gemini real a `OCI`** (cerrado en `develop`, pendiente en `OCI`) → habilita evaluar si el retrieval recupera algo.
 2. **Un test que verifique que NO_CONTEXT se dispara** con un documento sin coincidencias.
 3. **Provider por entorno para el vectorstore**, como el de storage — sin esto, cualquier
    implementación persistente exige editar código.
