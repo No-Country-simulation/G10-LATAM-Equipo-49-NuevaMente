@@ -1,6 +1,6 @@
 """Retrieval service (BE-RAG-009, COMP-05).
 
-Combina `EmbeddingProvider.embed_query` + `VectorStore.query` para obtener
+Combina `EmbeddingProvider.embed_query` + `similarity_search` para obtener
 el contexto relevante a una solicitud de adaptación.
 """
 from src.core.config import get_settings
@@ -8,6 +8,7 @@ from src.embeddings.base import EmbeddingProvider
 from src.embeddings.factory import get_embedding_provider
 from src.vectorstore.base import VectorStore, VectorStoreMatch
 from src.vectorstore.factory import get_vectorstore
+from src.vectorstore.search import similarity_search
 
 
 class DefaultRetrievalService:
@@ -43,4 +44,8 @@ class DefaultRetrievalService:
         settings = get_settings()
         query = " ".join(t for t in (perfil, nicho, tema) if t).strip() or "general"
         vector = self._embedder.embed_query(query)
-        return self._store.query(vector, settings.RETRIEVAL_TOP_K, doc_id=doc_id)
+        # similarity_search aplica el umbral de RETRIEVAL_MIN_SCORE y
+        # envuelve fallos del store en StorageError (OUT-005).
+        return similarity_search(
+            vector, self._store, settings.RETRIEVAL_TOP_K, doc_id=doc_id
+        )
