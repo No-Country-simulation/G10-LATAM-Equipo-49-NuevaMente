@@ -1,0 +1,27 @@
+# Python
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+.coverage
+.venv/
+venv/
+
+# Secretos / entorno
+.env
+*.pem
+.oci/
+
+# Estado local
+data/chroma/
+data/sqlite/
+data/mock_oci/
+*.log
+
+# IDE
+.idea/
+.vscode/
+
+# Restos del layout antiguo
+backend/
+documentacion/
