@@ -54,3 +54,7 @@ La prueba se ejecutó con las llamadas en vivo habilitadas mediante
 `COHERE_LIVE_TEST_SHOW_OUTPUT=1`, con `pytest -v -s`. La salida incluyó una
 advertencia deprecada originada en el SDK de Cohere/Pydantic (`__fields__`); no
 provocó que la prueba fallara. No se registra ni incluye la clave de API.
+
+## Pruebas con la UI existente en el repo
+<img width="1315" height="531" alt="image" src="https://github.com/user-attachments/assets/8f22e01c-6417-4b53-910e-3f5e9d1b9139" />
+
