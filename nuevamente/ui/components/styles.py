@@ -1655,7 +1655,7 @@ div.stButton > button:disabled {
 
     section[data-testid="stSidebar"] {
 
-        width: 250px !important;
+        width: 290px !important;
 
         min-width: 250px !important;
 

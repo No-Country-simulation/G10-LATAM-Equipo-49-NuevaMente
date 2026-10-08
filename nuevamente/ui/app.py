@@ -1,6 +1,6 @@
 """Punto de entrada de la interfaz web (COMP-10, FE-UI-005).
 
-Ejecutar desde la raíz del proyecto:  streamlit run ui/app.py
+Ejecutar desde la raíz del proyecto: streamlit run ui/app.py
 
 Compone las 5 pantallas de UX-001 (upload → selección → loading → resultado →
 error) con una pequeña máquina de estados en `st.session_state["stage"]`.
@@ -222,15 +222,24 @@ def main() -> None:
     render_sidebar()
 
     # --------------------------------------------------------
-    # PANTALLA ACTUAL
+    # CONTENEDOR DE LA PANTALLA ACTUAL
     # --------------------------------------------------------
+    #
+    # Todas las pantallas se renderizan dentro del mismo
+    # placeholder. Esto evita que contenido de una pantalla
+    # anterior permanezca visible cuando cambia el stage.
+    #
 
-    screen = SCREENS.get(
-        st.session_state["stage"],
-        upload_view.render,
-    )
+    screen_container = st.empty()
 
-    screen()
+    with screen_container.container():
+
+        screen = SCREENS.get(
+            st.session_state["stage"],
+            upload_view.render,
+        )
+
+        screen()
 
 
 # ============================================================
