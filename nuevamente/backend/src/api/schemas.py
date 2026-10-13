@@ -4,7 +4,7 @@ Estos modelos son el contrato de entrada/salida de cada endpoint. No
 contienen lógica; son composición de los schemas de dominio ya definidos
 en `output/schema.py`, `db/models.py`, etc.
 """
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel
 
@@ -53,6 +53,56 @@ class JobPendingResponse(BaseModel):
 
     job_id: str
     status: Literal["QUEUED", "PROCESSING"]
+
+
+# --- ESQUEMAS PARA JOB COMPLETADO (GET /adapt/{job_id} → 200 OK) ---
+
+
+class SourceItem(BaseModel):
+    chunk_id: str
+    page: int | None = None
+
+
+class MetadatosResponse(BaseModel):
+    doc_id: str
+    perfil: str
+    formato: str
+    nicho: str
+    tiempo_estimado_estudio_minutos: int
+    conceptos_clave: list[str]
+    sources: list[SourceItem] = []
+
+
+class ContenidoAdaptadoResponse(BaseModel):
+    titulo: str
+    introduccion_contextualizada: str
+    items: list[dict[str, Any]]
+
+
+class EvaluacionCalidadResponse(BaseModel):
+    fidelidad_score: float | None = None  # null aceptado en modo mock/previo a LLM-Juez
+    claridad_pedagogica: Literal["Alta", "Media", "Baja"] = "Alta"
+    observaciones: list[str] = []
+
+
+class AlmacenamientoOCIResponse(BaseModel):
+    bucket: str
+    object_name_original: str
+    object_name_json: str
+    uploaded_at: str
+
+
+class JobCompletedResponse(BaseModel):
+    """200 — `GET /adapt/{job_id}` cuando el job ha finalizado exitosamente."""
+
+    status: Literal["exito"] = "exito"
+    metadatos: MetadatosResponse
+    contenido_adaptado: ContenidoAdaptadoResponse
+    evaluacion_calidad: EvaluacionCalidadResponse
+    almacenamiento_oci: AlmacenamientoOCIResponse
+
+
+# --- ESQUEMAS GENERALES ---
 
 
 class ErrorDetail(BaseModel):

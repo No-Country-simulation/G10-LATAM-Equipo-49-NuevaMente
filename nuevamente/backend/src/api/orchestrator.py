@@ -4,10 +4,9 @@ Coordina, EN ORDEN, los servicios de cada capa. `api/main.py` solo delega
 aquí (regla de COMP-11: "main.py solo orquesta").
 
 Estado de implementación:
-    - Ingesta (RF-001): COMPLETA → validar, extraer, limpiar, chunkear,
-      subir el original y persistir documento + chunks + indexar en vectorstore.
-    - Adaptación (`/adapt`): RAG real con fallback a mock. El retrieval, el LLM
-      y la validación de fidelidad se integran progresivamente.
+    - Ingesta (RF-001): COMPLETA.
+    - Adaptación (`/adapt`): RAG real con Gemini/LLMProvider, validación de
+      fidelidad y fallback controlado a mock.
 """
 from datetime import UTC, datetime
 
@@ -32,7 +31,9 @@ from src.db.session import (
 )
 from src.embeddings.embed_chunks import embed_chunks
 from src.embeddings.factory import get_embedding_provider
+from src.generation.factory import get_llm_provider
 from src.generation.mock_adapter import MOCK_NOTICE, build_mock_content
+from src.generation.models import ContenidoAdaptado
 from src.generation.profiles import FORMATOS_MVP, NICHOS_MVP, PERFILES_MVP
 from src.ingestion.router import IngestionRouter
 from src.output.schema import (
@@ -72,11 +73,7 @@ class PipelineOrchestrator:
 
     # ------------------------------------------------------------------ ingesta
     def ingest(self, filename: str, content: bytes) -> IngestResponse:
-        """RF-001: valida, extrae, limpia, chunkea, sube el original y persiste.
-
-        Lanza:
-            InvalidFileError, ScannedPdfError, DocumentTooLargeError, StorageError.
-        """
+        """RF-001: valida, extrae, limpia, chunkea, sube el original y persiste."""
         with log_stage(log, "ingestion", filename=filename, size_bytes=len(content)):
             result = self._router.ingest(filename, content)
         doc_id = result.document_id
@@ -142,12 +139,7 @@ class PipelineOrchestrator:
             )
 
     def request_adaptation(self, request: AdaptRequest) -> Job:
-        """Valida la solicitud y crea un `Job` en estado QUEUED.
-
-        Lanza:
-            InvalidRequestError: parámetros inválidos.
-            DocumentNotFoundError: `document_id` inexistente.
-        """
+        """Valida la solicitud y crea un `Job` en estado QUEUED."""
         self._validate_request(request)
         if get_document(request.document_id) is None:
             raise DocumentNotFoundError(
@@ -158,14 +150,7 @@ class PipelineOrchestrator:
     def run_adaptation(
         self, request: AdaptRequest, job_id: str | None = None
     ) -> NuevaMenteOutput:
-        """Genera el resultado usando RAG con fallback a mock, y si hay `job_id`,
-        guarda el JSON en el almacenamiento.
-
-        Lanza:
-            DocumentNotFoundError: si `request.document_id` no existe.
-            NoContextError: si el retrieval no encuentra contexto suficiente
-                (regla de negocio RF-009 — NO se degrada a mock).
-        """
+        """Genera el resultado usando RAG + Gemini/LLMProvider y valida fidelidad."""
         document = get_document(request.document_id)
         if document is None:
             raise DocumentNotFoundError(
@@ -200,11 +185,8 @@ class PipelineOrchestrator:
                 self._store_result(output, document.storage_object_name, request, job_id)
             return output
 
-        # RAG real: retrieval + context_builder + validación
-        # NoContextError se propaga: es regla de negocio (RF-009), no fallo técnico
+        # 1. Retrieval
         retrieval_service = DefaultRetrievalService()
-        # Incluir el primer chunk como "tema" para que la query tenga términos
-        # del documento y los embeddings mock produzcan match (no hay semántica).
         tema_para_retrieval = chunks[0].text[:200] if chunks else None
         matches = retrieval_service.retrieve(
             doc_id=request.document_id,
@@ -212,27 +194,77 @@ class PipelineOrchestrator:
             nicho=request.nicho,
             tema=tema_para_retrieval,
         )
-        contexto = build_context(matches)  # lanza NoContextError si no hay matches sobre umbral
 
-        # Generar contenido (mock) y validar fidelidad contra el contexto
-        mock_chunks = [
-            type(
-                "_MockChunk",
-                (),
-                {"id": m.chunk_id, "text": m.text, "page": m.page, "section": None},
-            )()
-            for m in matches[:3]
-        ]
-        content, used = build_mock_content(
-            request.perfil, request.formato, request.nicho, mock_chunks
-        )
+        # 2. Context Builder (Lanza NoContextError si no supera el umbral de similitud)
+        contexto = build_context(matches)
 
-        # Paso 4: validación de fidelidad
+        # 3. Prompting & Generación con LLM
+        prompt = f"""Eres un experto en pedagogía y adaptación de contenidos técnicos. Tu tarea es reescribir y adaptar el contexto proporcionado para un destinatario específico.
+
+### INSTRUCCIONES DE ADAPTACIÓN:
+1. **Perfil del destinatario**: {request.perfil}
+2. **Formato de salida**: {request.formato}
+3. **Nicho / Sector**: {request.nicho}
+
+### REGLAS OBLIGATORIAS:
+- Usa ÚNICAMENTE la información provista en el CONTEXTO RECUPERADO. No inventes hechos ni agregues información externa.
+- Ajusta el lenguaje, el tono y la densidad técnica al perfil "{request.perfil}".
+- Estructura el texto principal en Markdown respetando el formato "{request.formato}".
+
+### CONTEXTO RECUPERADO:
+{contexto}
+
+### FORMATO DE SALIDA REQUERIDO (JSON ESTRUCTURADO):
+Genera la respuesta asegurando el siguiente esquema JSON exacto:
+{{
+  "cuerpo": "Texto completo en Markdown adaptado al formato y perfil solicitado.",
+  "conceptos_clave": ["Lista", "de", "conceptos", "fundamentales"],
+  "prerrequisitos": ["Lista", "de", "conocimientos", "o", "herramientas", "previas"],
+  "tiempo_estimado_min": 15
+}}
+"""
+
+        is_mock = False
+        llm_provider = get_llm_provider()
+
+        try:
+            raw_response = llm_provider.generate(prompt)
+            clean_response = raw_response.strip()
+            if clean_response.startswith("```json"):
+                clean_response = clean_response[7:]
+            if clean_response.startswith("```"):
+                clean_response = clean_response[3:]
+            if clean_response.endswith("```"):
+                clean_response = clean_response[:-3]
+            clean_response = clean_response.strip()
+
+            content = ContenidoAdaptado.model_validate_json(clean_response)
+        except Exception as exc:
+            log.warning("llm_generation_failed_fallback_to_mock", error=str(exc))
+            mock_chunks = [
+                type(
+                    "_MockChunk",
+                    (),
+                    {"id": m.chunk_id, "text": m.text, "page": m.page, "section": None},
+                )()
+                for m in matches[:3]
+            ]
+            content, _ = build_mock_content(
+                request.perfil, request.formato, request.nicho, mock_chunks
+            )
+            is_mock = True
+
+        # 4. Validación de fidelidad
         validation_service = DefaultValidationService()
         fidelity_eval = validation_service.validate(content.cuerpo, contexto)
 
+        status = "PARTIAL" if is_mock else "SUCCESS"
+        observaciones = fidelity_eval.observaciones or []
+        if is_mock and MOCK_NOTICE not in observaciones:
+            observaciones.append(MOCK_NOTICE)
+
         output = NuevaMenteOutput(
-            status="PARTIAL",
+            status=status,
             metadatos=Metadatos(
                 doc_id=request.document_id,
                 perfil=request.perfil,
@@ -244,7 +276,7 @@ class PipelineOrchestrator:
             evaluacion_calidad=EvaluacionCalidad(
                 fidelidad_score=fidelity_eval.score,
                 claims_no_soportados=fidelity_eval.claims_no_soportados,
-                observaciones=fidelity_eval.observaciones or [MOCK_NOTICE],
+                observaciones=observaciones,
             ),
         )
 
@@ -259,7 +291,7 @@ class PipelineOrchestrator:
         request: AdaptRequest,
         job_id: str,
     ) -> None:
-        """Sube el JSON del resultado; si falla, degrada con una observación (COMP-09)."""
+        """Sube el JSON del resultado; si falla, degrada con una observación."""
         try:
             with log_stage(log, "result_upload", document_id=request.document_id, job_id=job_id):
                 stored = upload_result_json(

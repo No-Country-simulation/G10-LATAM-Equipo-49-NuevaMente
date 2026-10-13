@@ -1,6 +1,6 @@
 """Selector de proveedor de LLM según configuración (DT-09).
 
-Permite intercambiar Gemini ↔ Mock vía `settings.LLM_PROVIDER` sin
+Permite intercambiar Cohere, Gemini o Mock vía `settings.LLM_PROVIDER` sin
 tocar el resto del pipeline (RNF-005).
 """
 from functools import lru_cache
@@ -32,7 +32,11 @@ def get_llm_provider() -> LLMProvider:
         from src.generation.providers.gemini import GeminiLLMProvider
 
         return GeminiLLMProvider()
+    if provider == "cohere":
+        from src.generation.providers.cohere import CohereLLMProvider
+
+        return CohereLLMProvider()
     raise NuevaMenteError(
         f"LLM_PROVIDER inválido: {settings.LLM_PROVIDER!r}. "
-        "Valores válidos: 'mock' o 'gemini'."
+        "Valores válidos: 'mock', 'gemini' o 'cohere'."
     )

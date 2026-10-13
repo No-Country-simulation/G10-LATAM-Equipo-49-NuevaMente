@@ -31,7 +31,11 @@ def get_embedding_provider() -> EmbeddingProvider:
         from src.embeddings.providers.gemini import GeminiEmbeddingProvider
 
         return GeminiEmbeddingProvider()
+    if provider == "cohere":
+        from src.embeddings.providers.cohere import CohereEmbeddingProvider
+
+        return CohereEmbeddingProvider()
     raise NuevaMenteError(
         f"EMBEDDING_PROVIDER inválido: {settings.EMBEDDING_PROVIDER!r}. "
-        "Valores válidos: 'mock' o 'gemini'."
+        "Valores válidos: 'mock', 'gemini' o 'cohere'."
     )

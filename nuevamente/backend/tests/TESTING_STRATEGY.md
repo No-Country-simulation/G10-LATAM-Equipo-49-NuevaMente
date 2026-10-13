@@ -50,6 +50,22 @@ Con `LLM_PROVIDER=mock` y `EMBEDDING_PROVIDER=mock` (valores por defecto de
 `.env.example`), la suite completa debe poder correr sin credenciales
 reales — condición necesaria para que corra en CI.
 
+## Prueba de embeddings Cohere en vivo
+
+`tests/integration/test_embedig_agente.py` usa `COHERE_API_KEY` del `.env` de la
+raíz del proyecto y el ejemplo de redes VCN para principiantes. Genera
+embeddings, recupera el contexto con `DefaultRetrievalService` usando perfil,
+nicho y tema, y llama al LLM Cohere para producir tres flashcards, cuya
+estructura JSON se valida con `ContenidoAdaptado`. El formato se usa durante
+la generación, no para crear el embedding de consulta. Como consume la API,
+está desactivada por defecto. Para ejecutarla en PowerShell:
+
+```powershell
+$env:RUN_COHERE_LIVE_TESTS = "1"
+Set-Location "C:\Users\Dell\Desktop\ORACLE ONE\Nuevamente_07_10_2026\G10-LATAM-Equipo-49-NuevaMente\nuevamente\backend"
+pytest tests\integration\test_embedig_agente.py -v
+```
+
 ## Tipos de prueba cubiertos (Fase 16)
 
 unit (QA-001, QA-002) · integration (QA-003) · AI evaluation (QA-004,

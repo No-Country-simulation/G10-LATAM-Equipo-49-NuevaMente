@@ -39,24 +39,34 @@ class Settings(BaseSettings):
     CHUNK_OVERLAP: int = 150
     MAX_DOCUMENT_CHARS: int = 2_000_000
 
-    # RAG — BE-RAG-009/010 (pendiente: Semana 2)
+    # RAG — BE-RAG-009/010
     RETRIEVAL_TOP_K: int = 5
     RETRIEVAL_MIN_SCORE: float = 0.25
 
-    # Validación de fidelidad — DT-11 (pendiente: Semana 3)
+    # Validación de fidelidad — DT-11
     FIDELITY_THRESHOLD: float = 0.90
 
-    # Proveedores de IA — DT-09 (🔴 bloqueante, no confirmado formalmente)
-    LLM_PROVIDER: str = "mock"          # "gemini" | "mock"
-    EMBEDDING_PROVIDER: str = "mock"    # "gemini" | "mock"
+    # Proveedores de IA — DT-09 ("gemini" | "cohere" | "mock")
+    LLM_PROVIDER: str = "mock"          # "gemini" | "cohere" | "mock"
+    EMBEDDING_PROVIDER: str = "mock"    # "gemini" | "cohere" | "mock"
+
+    # Configuración de Gemini
     GEMINI_API_KEY: str | None = None
     GEMINI_MODEL: str = "gemini-2.5-flash"
     GEMINI_EMBEDDING_MODEL: str = "text-embedding-004"
-    EMBEDDING_DIMENSIONS: int = 768     # dimensiones del modelo de embeddings activo
-    LLM_TIMEOUT_SECONDS: int = 30       # Fase 14
-    LLM_MAX_RETRIES: int = 1            # Fase 14
 
-    # Vector Store — DT-02 (pendiente: Semana 2)
+    # Configuración de Cohere
+    COHERE_API_KEY: str | None = None
+    COHERE_MODEL: str = "command-r-plus"
+    COHERE_EMBEDDING_MODEL: str = "embed-multilingual-v3.0"
+
+    # Dimensiones de los embeddings activos (768 para Gemini, 1024 para Cohere v3)
+    EMBEDDING_DIMENSIONS: int = 768
+    COHERE_EMBEDDING_DIMENSIONS: int = 1024
+    LLM_TIMEOUT_SECONDS: int = 30
+    LLM_MAX_RETRIES: int = 1
+
+    # Vector Store — DT-02
     VECTORSTORE_PROVIDER: str = "memory"    # "memory" | "chroma"
     CHROMA_PERSIST_DIR: str = "./data/chroma"
 
@@ -88,23 +98,44 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def validate_ai_providers(self) -> Self:
-        """Si el proveedor es gemini, exige GEMINI_API_KEY."""
-        if self.LLM_PROVIDER.lower() == "gemini" and not self.GEMINI_API_KEY:
-            raise ValueError(
-                "LLM_PROVIDER='gemini' requiere GEMINI_API_KEY en .env o variables de entorno"
-            )
-        if self.EMBEDDING_PROVIDER.lower() == "gemini" and not self.GEMINI_API_KEY:
-            raise ValueError(
-                "EMBEDDING_PROVIDER='gemini' requiere GEMINI_API_KEY en .env o variables de entorno"
-            )
+        """Verifica que existan las API Keys según los proveedores activos."""
+        provider_llm = self.LLM_PROVIDER.lower()
+        provider_emb = self.EMBEDDING_PROVIDER.lower()
+
+        # Validación para Gemini
+        if provider_llm == "gemini" and not self.GEMINI_API_KEY:
+            raise ValueError("LLM_PROVIDER='gemini' requiere GEMINI_API_KEY en .env o variables de entorno")
+        if provider_emb == "gemini" and not self.GEMINI_API_KEY:
+            raise ValueError("EMBEDDING_PROVIDER='gemini' requiere GEMINI_API_KEY en .env o variables de entorno")
+
+        # Validación para Cohere
+        if provider_llm == "cohere" and not self.COHERE_API_KEY:
+            raise ValueError("LLM_PROVIDER='cohere' requiere COHERE_API_KEY en .env o variables de entorno")
+        if provider_emb == "cohere" and not self.COHERE_API_KEY:
+            raise ValueError("EMBEDDING_PROVIDER='cohere' requiere COHERE_API_KEY en .env o variables de entorno")
+        if provider_emb == "cohere":
+            if self.COHERE_EMBEDDING_DIMENSIONS <= 0:
+                raise ValueError("COHERE_EMBEDDING_DIMENSIONS debe ser positivo")
+            if (
+                self.COHERE_EMBEDDING_MODEL == "embed-multilingual-v3.0"
+                and self.COHERE_EMBEDDING_DIMENSIONS not in {256, 512, 1024}
+            ):
+                raise ValueError(
+                    "COHERE_EMBEDDING_DIMENSIONS debe ser 256, 512 o 1024 "
+                    "para embed-multilingual-v3.0"
+                )
+
         return self
 
-    def resolve_path(self, value: str) -> Path:
-        """Convierte una ruta de configuración en absoluta.
+    @property
+    def active_embedding_dimensions(self) -> int:
+        """Dimensión efectiva del proveedor usado para indexar y consultar."""
+        if self.EMBEDDING_PROVIDER.lower() == "cohere":
+            return self.COHERE_EMBEDDING_DIMENSIONS
+        return self.EMBEDDING_DIMENSIONS
 
-        Las rutas relativas se interpretan desde la raíz del proyecto (no
-        desde el directorio de trabajo), para que `data/` sea siempre el mismo.
-        """
+    def resolve_path(self, value: str) -> Path:
+        """Convierte una ruta de configuración en absoluta."""
         path = Path(value).expanduser()
         return path if path.is_absolute() else PROJECT_ROOT / path
 

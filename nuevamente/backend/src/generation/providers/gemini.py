@@ -52,6 +52,7 @@ class GeminiLLMProvider:
                     config={
                         "temperature": temperature,
                         "max_output_tokens": 8192,
+                        "response_mime_type": "application/json",
                     },
                 )
                 return response.text or ""

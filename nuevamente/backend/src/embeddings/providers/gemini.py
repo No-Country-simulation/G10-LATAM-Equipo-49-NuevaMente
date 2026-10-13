@@ -30,11 +30,15 @@ class GeminiEmbeddingProvider:
         self._client: Any = None
 
     def _get_client(self) -> Any:
-        """Importación perezosa del cliente de google-genai."""
+        """Importación perezosa del cliente de google-genai forzando la API v1."""
         if self._client is None:
             from google import genai
+            from google.genai import types
 
-            self._client = genai.Client(api_key=self._api_key)
+            self._client = genai.Client(
+                api_key=self._api_key,
+                http_options=types.HttpOptions(api_version="v1"),
+            )
         return self._client
 
     def _embed_with_retry(self, texts: list[str]) -> list[list[float]]:
@@ -42,13 +46,15 @@ class GeminiEmbeddingProvider:
         client = self._get_client()
         last_exc: Exception | None = None
 
+        # Sanear el nombre del modelo quitando 'models/' si viene en la variable de entorno
+        model_name = self._model.replace("models/", "") if self._model else "text-embedding-004"
+
         for attempt in range(self._max_retries + 1):
             try:
                 response = client.models.embed_content(
-                    model=self._model,
+                    model=model_name,
                     contents=texts,
                 )
-                # La API devuelve una lista de ContentEmbedding con .values
                 return [emb.values for emb in response.embeddings]
             except Exception as exc:
                 last_exc = exc
@@ -57,7 +63,6 @@ class GeminiEmbeddingProvider:
                     time.sleep(wait)
                 continue
 
-        # Si llegamos aquí, todos los reintentos fallaron
         msg = f"Fallo al generar embeddings tras {self._max_retries + 1} intentos: {last_exc}"
         raise LLMProviderError(msg) from last_exc
 
@@ -82,7 +87,3 @@ class GeminiEmbeddingProvider:
     def embed_query(self, text: str) -> list[float]:
         """Genera el vector de una consulta individual (para retrieval)."""
         return self.embed_documents([text])[0]
-
-
-# Nota: cumple el Protocol correspondiente por forma estructural (duck typing).
-# No se usa issubclass() en importación: el Protocol no es @runtime_checkable.
