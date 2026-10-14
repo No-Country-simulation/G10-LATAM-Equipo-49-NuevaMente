@@ -421,7 +421,7 @@ h1 {
 
 
 
-    font-weight: 500 !important;
+    font-weight: 700 !important;
 
 
 
@@ -1926,8 +1926,6 @@ div.stButton > button:disabled {
     }
 
 }
-
-
 
 </style>
 

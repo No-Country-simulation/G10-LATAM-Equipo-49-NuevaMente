@@ -25,7 +25,9 @@ from components.styles import load_styles
 
 UI_DIR = Path(__file__).resolve().parent
 
-LOGO_PATH = UI_DIR / "assets" / "logo.png"
+LOGO_PATH = UI_DIR / "assets" / "logo.svg"
+LOGO_N= UI_DIR / "assets" / "N_nuevamente.png"
+
 
 
 # ============================================================
@@ -195,7 +197,7 @@ def main() -> None:
 
     st.set_page_config(
         page_title="NuevaMente",
-        page_icon="🧠",
+        page_icon=LOGO_N,
         layout="wide",
         initial_sidebar_state="expanded",
     )
