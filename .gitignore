@@ -22,6 +22,6 @@ data/mock_oci/
 .idea/
 .vscode/
 
-# Restos del layout antiguo
-backend/
-documentacion/
+# Restos del layout antiguo (raíz del repo)
+/backend/
+/documentacion/
