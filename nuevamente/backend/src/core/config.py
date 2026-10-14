@@ -56,6 +56,7 @@ class Settings(BaseSettings):
     COHERE_MODEL: str = "command-r-plus"
     COHERE_EMBEDDING_MODEL: str = "embed-multilingual-v3.0"
     COHERE_EMBEDDING_DIMENSIONS: int = 1024
+    COHERE_MAX_TOKENS: int = 4096
     EMBEDDING_DIMENSIONS: int = 768     # dimensiones del modelo de embeddings activo (gemini/mock)
     LLM_TIMEOUT_SECONDS: int = 30       # Fase 14
     LLM_MAX_RETRIES: int = 1            # Fase 14

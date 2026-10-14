@@ -1,7 +1,12 @@
 """Selector de proveedor de LLM según configuración (DT-09).
 
-Permite intercambiar Gemini ↔ Mock vía `settings.LLM_PROVIDER` sin
+Permite intercambiar Cohere, Gemini o Mock vía `settings.LLM_PROVIDER` sin
 tocar el resto del pipeline (RNF-005).
+
+Si `LLM_PROVIDER=cohere` y hay `GEMINI_API_KEY` configurada, se devuelve una
+cadena de failover `FailoverLLMProvider(CohereLLMProvider, GeminiLLMProvider)`:
+primero Cohere, si falla tras reintentos → Gemini, si ambos fallan → error
+que el orquestador convierte en fallback a mock (`status=PARTIAL`).
 """
 from functools import lru_cache
 
@@ -32,7 +37,21 @@ def get_llm_provider() -> LLMProvider:
         from src.generation.providers.gemini import GeminiLLMProvider
 
         return GeminiLLMProvider()
+    if provider == "cohere":
+        from src.generation.providers.cohere import CohereLLMProvider
+
+        cohere_provider = CohereLLMProvider()
+        # Cadena de failover: Cohere → Gemini (si hay GEMINI_API_KEY)
+        if settings.GEMINI_API_KEY:
+            from src.generation.failover import FailoverLLMProvider
+            from src.generation.providers.gemini import GeminiLLMProvider
+
+            return FailoverLLMProvider(
+                primary=cohere_provider,
+                backup=GeminiLLMProvider(),
+            )
+        return cohere_provider
     raise NuevaMenteError(
         f"LLM_PROVIDER inválido: {settings.LLM_PROVIDER!r}. "
-        "Valores válidos: 'mock' o 'gemini'."
+        "Valores válidos: 'mock', 'gemini' o 'cohere'."
     )

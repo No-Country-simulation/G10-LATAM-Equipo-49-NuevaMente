@@ -8,9 +8,10 @@ que el resto del pipeline (COMP-04, COMP-06) sea independiente del proveedor
 Nota: el contrato de *embeddings* (`EmbeddingProvider`) vive en
 `src/embeddings/base.py`. Este módulo es exclusivamente el de *generación*.
 """
-from typing import Protocol
+from typing import Protocol, runtime_checkable
 
 
+@runtime_checkable
 class LLMProvider(Protocol):
     """Genera texto a partir de un prompt."""
 

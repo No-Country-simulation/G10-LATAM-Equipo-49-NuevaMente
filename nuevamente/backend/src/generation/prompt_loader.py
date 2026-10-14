@@ -7,7 +7,6 @@ Plan Técnico Fase 15.
 import re
 from pathlib import Path
 
-
 PROMPTS_DIR = Path(__file__).resolve().parent / "prompts"
 
 

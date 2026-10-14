@@ -96,7 +96,7 @@ class CohereEmbeddingProvider:
 
         Usa `input_type="search_query"` para consultas.
         """
-        return self.embed_documents([text])[0]
+        return self._embed_with_retry([text], "search_query")[0]
 
 
 # Nota: cumple el Protocol correspondiente por forma estructural (duck typing).
