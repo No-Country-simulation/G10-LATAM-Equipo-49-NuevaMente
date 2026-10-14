@@ -212,5 +212,52 @@ backend/tests/{unit,integration,fixtures}      ui/{app.py,api_client.py,componen
 ## Limitaciones conocidas
 - `/adapt` usa mock para generación LLM: no hay LLM real ni score de fidelidad con LLM-juez (`fidelidad_score` = `null`, estado `PARTIAL`). RAG retrieval y embeddings reales **sí funcionan** con ChromaDB persistente.
 - Los PDF escaneados (sin texto) se rechazan; no hay OCR.
-- `STORAGE_PROVIDER=oci` está implementado pero **no se ha probado contra un bucket real**.
+- **`STORAGE_PROVIDER=oci` está implementado y probado contra bucket real** (`bucket-20260921-2152-nuevamente-docs-test` en `mx-queretaro-1`).
 - Las rutas relativas de `.env` (`./data/...`) se resuelven desde la raíz del proyecto, no desde el directorio actual.
+
+## 🪣 Almacenamiento en OCI (COMP-09)
+
+NuevaMente puede persistir documentos originales y resultados generados en **Oracle Cloud Infrastructure Object Storage** usando el SDK `oci`. El cliente implementa el protocolo `StorageClient` con verificación post-upload (`head_object`) y cumple la convención de nombres DT-07: `{tipo}/{doc_id}/{timestamp}_{nombre}`.
+
+### Requisitos
+- Cuenta OCI con bucket Object Storage (capa Always Free o superior).
+- `~/.oci/config` con perfil válido (usuario, fingerprint, key_file, tenancy, región).
+- `pip install -r backend/requirements-oci.txt` (instala `oci>=2.130`).
+
+### Variables de entorno (`.env`, **sin valores reales**)
+```bash
+STORAGE_PROVIDER=oci              # mock (default) | oci
+OCI_CONFIG_FILE=~/.oci/config
+OCI_PROFILE=DEFAULT
+OCI_NAMESPACE=                    # se autodescubre si no se indica
+OCI_BUCKET_NAME=                  # nombre del bucket real
+MOCK_STORAGE_DIR=./data/mock_oci  # solo para STORAGE_PROVIDER=mock
+```
+
+### Roles IAM de mínimo privilegio
+Para separar las responsabilidades de los agentes del pipeline, se crean dos roles IAM en el compartment `Nuevamente`:
+
+| Rol | Grupo IAM | Lectura | Escritura |
+|---|---|---|---|
+| **Embeddings** | `nuevamente-embeddings` | Todo el bucket | Solo `originals/*` |
+| **Generación** | `nuevamente-generator` | Todo el bucket | Solo `generated/*` |
+
+Un grupo `nuevamente-runner` hereda ambos roles y se usa para las pruebas de integración del pipeline completo. El bucket de semillas (`docs-originales/`) es de solo lectura para todos los roles.
+
+### Scripts de diagnóstico
+```bash
+# Bootstrap idempotente de grupos y políticas (dry-run por defecto)
+python -m backend.scripts.bootstrap_iam_roles [--dry-run|--apply] [--verbose]
+
+# Smoke test end-to-end contra bucket real
+OCI_NAMESPACE=... OCI_BUCKET_NAME=... python -m backend.scripts.smoke_bucket_real [--dry-run] [--cleanup]
+
+# Listado de objetos
+python -m backend.scripts.list_bucket [--prefix originals/] [--limit N]
+```
+
+### Archivos clave
+- `backend/src/storage/naming.py` — convención DT-07 (`sanitize_filename`, `build_object_name`)
+- `backend/src/storage/oci_client.py` — cliente OCI (`upload_bytes`, `object_exists`, `list_objects`)
+- `backend/src/storage/upload.py` — `upload_original`, `upload_result_json` con verificación
+- `backend/src/storage/verify.py` — `verify_upload` (post-upload `head_object`)

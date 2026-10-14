@@ -8,14 +8,16 @@ Por defecto hace dry-run. Con --apply escribe en OCI.
 """
 import argparse
 import sys
-from typing import Optional
 
 import oci
 from oci.identity import IdentityClient
-from oci.identity.models import CreateGroupDetails, CreatePolicyDetails, UpdatePolicyDetails
+from oci.identity.models import (
+    CreateGroupDetails,
+    CreatePolicyDetails,
+    UpdatePolicyDetails,
+)
 
 from src.storage.oci_config import load_oci_config
-
 
 # ── Constantes de configuración ──────────────────────────────────────────
 TENANCY_ID: str = ""  # se resuelve desde el config
@@ -35,21 +37,23 @@ CURRENT_USER_NAME: str = ""
 
 # Statements de política (idempotentes: mismos textos = no drift)
 STATEMENTS_EMBEDDINGS = [
-    f"Allow group {GROUP_EMBEDDINGS} to read objects in compartment {COMPARTMENT_NAME} "
-    f"where target.bucket.name = '{BUCKET_NAME}'",
-    f"Allow group {GROUP_EMBEDDINGS} to manage objects in compartment {COMPARTMENT_NAME} "
-    f"where all {{target.bucket.name = '{BUCKET_NAME}', "
+    f"Allow group {GROUP_EMBEDDINGS} to read objects in compartment "
+    f"{COMPARTMENT_NAME} where target.bucket.name = '{BUCKET_NAME}'",
+    f"Allow group {GROUP_EMBEDDINGS} to manage objects in compartment "
+    f"{COMPARTMENT_NAME} where all {{target.bucket.name = '{BUCKET_NAME}', "
     f"target.object.name = 'originals/*', "
-    f"any {{request.permission = 'OBJECT_CREATE', request.permission = 'OBJECT_OVERWRITE'}}}}",
+    f"any {{request.permission = 'OBJECT_CREATE', "
+    f"request.permission = 'OBJECT_OVERWRITE'}}}}",
 ]
 
 STATEMENTS_GENERATOR = [
-    f"Allow group {GROUP_GENERATOR} to read objects in compartment {COMPARTMENT_NAME} "
-    f"where target.bucket.name = '{BUCKET_NAME}'",
-    f"Allow group {GROUP_GENERATOR} to manage objects in compartment {COMPARTMENT_NAME} "
-    f"where all {{target.bucket.name = '{BUCKET_NAME}', "
+    f"Allow group {GROUP_GENERATOR} to read objects in compartment "
+    f"{COMPARTMENT_NAME} where target.bucket.name = '{BUCKET_NAME}'",
+    f"Allow group {GROUP_GENERATOR} to manage objects in compartment "
+    f"{COMPARTMENT_NAME} where all {{target.bucket.name = '{BUCKET_NAME}', "
     f"target.object.name = 'generated/*', "
-    f"any {{request.permission = 'OBJECT_CREATE', request.permission = 'OBJECT_OVERWRITE'}}}}",
+    f"any {{request.permission = 'OBJECT_CREATE', "
+    f"request.permission = 'OBJECT_OVERWRITE'}}}}",
 ]
 
 
@@ -79,7 +83,7 @@ def _resolve_current_user_name(client: IdentityClient) -> str:
     return user.name
 
 
-def _get_group_id(client: IdentityClient, tenancy_id: str, name: str) -> Optional[str]:
+def _get_group_id(client: IdentityClient, tenancy_id: str, name: str) -> str | None:
     groups = oci.pagination.list_call_get_all_results(
         client.list_groups, tenancy_id
     ).data
@@ -89,7 +93,9 @@ def _get_group_id(client: IdentityClient, tenancy_id: str, name: str) -> Optiona
     return None
 
 
-def _create_group(client: IdentityClient, tenancy_id: str, name: str, description: str, dry_run: bool) -> str:
+def _create_group(
+    client: IdentityClient, tenancy_id: str, name: str, description: str, dry_run: bool
+) -> str:
     if dry_run:
         print(f"[DRY-RUN] Crear grupo: {name}")
         return "ocid1.group.dryrun"
@@ -103,7 +109,9 @@ def _create_group(client: IdentityClient, tenancy_id: str, name: str, descriptio
     return resp.data.id
 
 
-def _ensure_group(client: IdentityClient, tenancy_id: str, name: str, description: str, dry_run: bool) -> str:
+def _ensure_group(
+    client: IdentityClient, tenancy_id: str, name: str, description: str, dry_run: bool
+) -> str:
     gid = _get_group_id(client, tenancy_id, name)
     if gid:
         print(f"[EXISTS] Grupo: {name} ({gid})")
@@ -111,7 +119,7 @@ def _ensure_group(client: IdentityClient, tenancy_id: str, name: str, descriptio
     return _create_group(client, tenancy_id, name, description, dry_run)
 
 
-def _get_policy_id(client: IdentityClient, compartment_id: str, name: str) -> Optional[str]:
+def _get_policy_id(client: IdentityClient, compartment_id: str, name: str) -> str | None:
     policies = oci.pagination.list_call_get_all_results(
         client.list_policies, compartment_id
     ).data
@@ -121,7 +129,13 @@ def _get_policy_id(client: IdentityClient, compartment_id: str, name: str) -> Op
     return None
 
 
-def _create_policy(client: IdentityClient, compartment_id: str, name: str, statements: list[str], dry_run: bool) -> str:
+def _create_policy(
+    client: IdentityClient,
+    compartment_id: str,
+    name: str,
+    statements: list[str],
+    dry_run: bool,
+) -> str:
     if dry_run:
         print(f"[DRY-RUN] Crear política: {name}")
         for s in statements:
@@ -139,7 +153,11 @@ def _create_policy(client: IdentityClient, compartment_id: str, name: str, state
 
 
 def _update_policy_if_drift(
-    client: IdentityClient, policy_id: str, current_statements: list[str], desired_statements: list[str], dry_run: bool
+    client: IdentityClient,
+    policy_id: str,
+    current_statements: list[str],
+    desired_statements: list[str],
+    dry_run: bool,
 ) -> bool:
     if current_statements == desired_statements:
         print(f"[OK] Política {policy_id}: sin drift")
@@ -156,7 +174,11 @@ def _update_policy_if_drift(
 
 
 def _ensure_policy(
-    client: IdentityClient, compartment_id: str, name: str, statements: list[str], dry_run: bool
+    client: IdentityClient,
+    compartment_id: str,
+    name: str,
+    statements: list[str],
+    dry_run: bool,
 ) -> str:
     pid = _get_policy_id(client, compartment_id, name)
     if pid:
@@ -168,7 +190,11 @@ def _ensure_policy(
 
 
 def _add_user_to_group_if_missing(
-    client: IdentityClient, group_id: str, user_ocid: str, dry_run: bool, tenancy_id: str
+    client: IdentityClient,
+    group_id: str,
+    user_ocid: str,
+    dry_run: bool,
+    tenancy_id: str,
 ) -> None:
     if dry_run:
         print(f"[DRY-RUN] Añadir usuario {user_ocid} al grupo {group_id}")
@@ -190,26 +216,43 @@ def _add_user_to_group_if_missing(
 
 
 def _print_rollback_instructions(
-    embeddings_gid: str, generator_gid: str, runner_gid: str,
-    embeddings_pid: str, generator_pid: str
+    embeddings_gid: str,
+    generator_gid: str,
+    runner_gid: str,
+    embeddings_pid: str,
+    generator_pid: str,
 ) -> None:
     print("\n=== COMANDOS DE ROLLBACK ===")
-    print(f"# Eliminar membresías del runner")
+    print("# Eliminar membresías del runner")
     print(f"oci iam group remove-user --group-id {runner_gid} --user-id <OCID_DEL_USUARIO>")
-    print(f"# Eliminar políticas")
+    print("# Eliminar políticas")
     print(f"oci iam policy delete --policy-id {embeddings_pid} --force")
     print(f"oci iam policy delete --policy-id {generator_pid} --force")
-    print(f"# Eliminar grupos")
+    print("# Eliminar grupos")
     print(f"oci iam group delete --group-id {embeddings_gid} --force")
     print(f"oci iam group delete --group-id {generator_gid} --force")
     print(f"oci iam group delete --group-id {runner_gid} --force")
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="Bootstrap IAM roles para el bucket de NuevaMente")
-    parser.add_argument("--dry-run", action="store_true", default=True, help="Simula sin escribir (por defecto)")
-    parser.add_argument("--apply", action="store_false", dest="dry_run", help="Aplica los cambios en OCI")
-    parser.add_argument("--verbose", action="store_true", help="Salida detallada")
+    parser = argparse.ArgumentParser(
+        description="Bootstrap IAM roles para el bucket de NuevaMente"
+    )
+    parser.add_argument(
+        "--dry-run",
+        action="store_true",
+        default=True,
+        help="Simula sin escribir (por defecto)",
+    )
+    parser.add_argument(
+        "--apply",
+        action="store_false",
+        dest="dry_run",
+        help="Aplica los cambios en OCI",
+    )
+    parser.add_argument(
+        "--verbose", action="store_true", help="Salida detallada"
+    )
     args = parser.parse_args()
 
     global config
@@ -228,34 +271,76 @@ def main() -> int:
 
     # 1. Grupos (en tenancy)
     embeddings_gid = _ensure_group(
-        client, TENANCY_ID, GROUP_EMBEDDINGS,
-        "Rol del agente de embeddings: lee todo el bucket, escribe solo en originals/", args.dry_run
+        client,
+        TENANCY_ID,
+        GROUP_EMBEDDINGS,
+        (
+            "Rol del agente de embeddings: lee todo el bucket, "
+            "escribe solo en originals/"
+        ),
+        args.dry_run,
     )
     generator_gid = _ensure_group(
-        client, TENANCY_ID, GROUP_GENERATOR,
-        "Rol del agente de generación: lee todo el bucket, escribe solo en generated/", args.dry_run
+        client,
+        TENANCY_ID,
+        GROUP_GENERATOR,
+        (
+            "Rol del agente de generación: lee todo el bucket, "
+            "escribe solo en generated/"
+        ),
+        args.dry_run,
     )
     runner_gid = _ensure_group(
-        client, TENANCY_ID, GROUP_RUNNER,
-        "Runner de pruebas: hereda ambos roles (embeddings + generator)", args.dry_run
+        client,
+        TENANCY_ID,
+        GROUP_RUNNER,
+        (
+            "Runner de pruebas: hereda ambos roles "
+            "(embeddings + generator)"
+        ),
+        args.dry_run,
     )
 
     # 2. Políticas (en compartment)
-    embeddings_pid = _ensure_policy(client, compartment_id, POLICY_EMBEDDINGS, STATEMENTS_EMBEDDINGS, args.dry_run)
-    generator_pid = _ensure_policy(client, compartment_id, POLICY_GENERATOR, STATEMENTS_GENERATOR, args.dry_run)
+    embeddings_pid = _ensure_policy(
+        client,
+        compartment_id,
+        POLICY_EMBEDDINGS,
+        STATEMENTS_EMBEDDINGS,
+        args.dry_run,
+    )
+    generator_pid = _ensure_policy(
+        client,
+        compartment_id,
+        POLICY_GENERATOR,
+        STATEMENTS_GENERATOR,
+        args.dry_run,
+    )
 
     # 3. Membresía: runner pertenece a ambos roles
-    _add_user_to_group_if_missing(client, embeddings_gid, config["user"], args.dry_run, TENANCY_ID)
-    _add_user_to_group_if_missing(client, generator_gid, config["user"], args.dry_run, TENANCY_ID)
+    _add_user_to_group_if_missing(
+        client, embeddings_gid, config["user"], args.dry_run, TENANCY_ID
+    )
+    _add_user_to_group_if_missing(
+        client, generator_gid, config["user"], args.dry_run, TENANCY_ID
+    )
 
     # 4. Rollback info
-    _print_rollback_instructions(embeddings_gid, generator_gid, runner_gid, embeddings_pid, generator_pid)
+    _print_rollback_instructions(
+        embeddings_gid, generator_gid, runner_gid, embeddings_pid, generator_pid
+    )
 
     if args.dry_run:
         print("\n[DRY-RUN] No se escribieron cambios. Ejecuta con --apply para aplicarlos.")
     else:
-        print("\n[OK] Bootstrap completado. Espera ~1-5 min a que las políticas se propaguen en OCI.")
-        print("Después: crea objetos marcadores 'originals/' y 'generated/' (0 bytes) y ejecuta smoke_bucket_real.py")
+        print(
+            "\n[OK] Bootstrap completado. Espera ~1-5 min a que "
+            "las políticas se propaguen en OCI."
+        )
+        print(
+            "Después: crea objetos marcadores 'originals/' y "
+            "'generated/' (0 bytes) y ejecuta smoke_bucket_real.py"
+        )
 
     return 0
 

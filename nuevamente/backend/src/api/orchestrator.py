@@ -289,6 +289,9 @@ class PipelineOrchestrator:
                 output.almacenamiento_oci.object_name_json if output.almacenamiento_oci else None
             )
             save_job_result(job_id, output.status, output.model_dump_json(), stored_name)
+        except NoContextError as exc:
+            log.warning("job_no_context", job_id=job_id, error=exc.message)
+            update_job_status(job_id, "NO_CONTEXT", exc.message)
         except NuevaMenteError as exc:
             log.error("job_failed", job_id=job_id, code=exc.code, error=exc.message)
             update_job_status(job_id, "ERROR", exc.message)

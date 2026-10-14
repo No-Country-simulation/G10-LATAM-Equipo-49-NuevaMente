@@ -4,27 +4,25 @@
 Ejecuta:
   1. Lado embeddings: put/head/list/get en originals/
   2. Lado generación: put/head/list/get en generated/
-  3. Prueba negativa: put en resultados/ (debe fallar con 403)
+  3. Verificación de políticas: resultados/ bloqueado para embeddings/generator
 
 Uso:
-    python -m backend.scripts.smoke_bucket_real [--prefix PREFIX] [--cleanup]
+    python -m backend.scripts.smoke_bucket_real [--dry-run] [--cleanup]
 
-Requisitos: credenciales OCI en ~/.oci/config y variables OCI_NAMESPACE, OCI_BUCKET_NAME.
+Requisitos: credenciales OCI en ~/.oci/config y variables
+OCI_NAMESPACE, OCI_BUCKET_NAME.
 """
 import argparse
 import hashlib
 import json
 import sys
-import tempfile
-import time
 from datetime import UTC, datetime
-from pathlib import Path
 
 import oci
 from oci.object_storage import ObjectStorageClient
 
-from src.storage.oci_client import OCIStorageClient
 from src.storage.naming import build_object_name
+from src.storage.oci_client import OCIStorageClient
 
 
 def _sha256(data: bytes) -> str:
@@ -33,7 +31,14 @@ def _sha256(data: bytes) -> str:
 
 def _make_pdf_bytes() -> bytes:
     """PDF mínimo válido (%PDF-1.4 ...)."""
-    return b"%PDF-1.4\n1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] >>\nendobj\nxref\n0 4\n0000000000 65535 f \n0000000009 00000 n \n0000000058 00000 n \n0000000115 00000 n \ntrailer\n<< /Size 4 /Root 1 0 R >>\nstartxref\n193\n%%EOF\n"
+    return (
+        b"%PDF-1.4\n1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n"
+        b"2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n"
+        b"3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] >>\n"
+        b"endobj\nxref\n0 4\n0000000000 65535 f \n0000000009 00000 n \n"
+        b"0000000058 00000 n \n0000000115 00000 n \ntrailer\n"
+        b"<< /Size 4 /Root 1 0 R >>\nstartxref\n193\n%%EOF\n"
+    )
 
 
 def _make_json_bytes() -> bytes:
@@ -54,7 +59,11 @@ def _run_smoke(dry_run: bool = False, cleanup: bool = False) -> int:
     from src.core.config import get_settings
     settings = get_settings()
     if not settings.OCI_NAMESPACE or not settings.OCI_BUCKET_NAME:
-        print("[SKIP] OCI_NAMESPACE o OCI_BUCKET_NAME no configurados. Saltando prueba real.", file=sys.stderr)
+        print(
+            "[SKIP] OCI_NAMESPACE o OCI_BUCKET_NAME no configurados. "
+            "Saltando prueba real.",
+            file=sys.stderr,
+        )
         return 0
 
     namespace = settings.OCI_NAMESPACE
@@ -123,14 +132,20 @@ def _run_smoke(dry_run: bool = False, cleanup: bool = False) -> int:
         print(f"  get_object SHA256: {got_sha} (esperado {json_sha})")
         assert got_sha == json_sha
 
-    # ── 3. Verificación de políticas: resultados/ debería estar bloqueado para los roles ────
+    # ── 3. Verificación de políticas: resultados/ bloqueado ──────────────
     print("\n=== POLICY CHECK: resultados/ (bloqueado para embeddings/generator) ===")
     print("  El usuario actual tiene rol Administrators → permisos completos.")
-    print("  Las políticas 'nuevamente-embeddings-policy' y 'nuevamente-generator-policy'")
-    print("  restringen escritura a 'originals/*' y 'generated/*' respectivamente.")
-    print("  Un usuario que SOLO pertenezca a esos grupos recibiría 403 en 'resultados/'.")
-    obj_forbidden = build_object_name("resultados", doc_id, f"forbidden_{ts}.json")
-    print(f"  (Put de prueba en 'resultados/' omitido: usuario admin tiene acceso total)")
+    print(
+        "  Las políticas 'nuevamente-embeddings-policy' y "
+        "'nuevamente-generator-policy'"
+    )
+    print(
+        "  restringen escritura a 'originals/*' y 'generated/*' respectivamente."
+    )
+    print(
+        "  Un usuario que SOLO pertenezca a esos grupos recibiría 403 en 'resultados/'."
+    )
+    print("  (Put de prueba en 'resultados/' omitido: usuario admin tiene acceso total)")
 
     # ── Cleanup opcional ────────────────────────────────────────────────
     if cleanup and not dry_run:
@@ -149,13 +164,20 @@ def _run_smoke(dry_run: bool = False, cleanup: bool = False) -> int:
 def main() -> int:
     parser = argparse.ArgumentParser(description="Smoke test real bucket OCI")
     parser.add_argument("--dry-run", action="store_true", help="Simula sin escribir")
-    parser.add_argument("--cleanup", action="store_true", help="Borra los objetos de prueba al final (requiere permiso DELETE)")
+    parser.add_argument(
+        "--cleanup",
+        action="store_true",
+        help="Borra los objetos de prueba al final (requiere permiso DELETE)",
+    )
     args = parser.parse_args()
 
     try:
         return _run_smoke(dry_run=args.dry_run, cleanup=args.cleanup)
     except oci.exceptions.ConfigFileNotFound:
-        print("[SKIP] ~/.oci/config no encontrado. Configura credenciales OCI.", file=sys.stderr)
+        print(
+            "[SKIP] ~/.oci/config no encontrado. Configura credenciales OCI.",
+            file=sys.stderr,
+        )
         return 0
     except oci.exceptions.InvalidConfig as exc:
         print(f"[SKIP] Config OCI inválida: {exc}", file=sys.stderr)

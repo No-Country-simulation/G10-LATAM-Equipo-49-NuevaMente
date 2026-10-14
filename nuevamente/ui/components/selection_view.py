@@ -4,7 +4,6 @@ import streamlit as st
 
 import api_client
 
-
 PERFILES = [
     {
         "titulo": "Principiante / Transición de carrera",

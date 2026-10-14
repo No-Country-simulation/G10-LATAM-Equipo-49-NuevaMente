@@ -2,9 +2,9 @@
 
 import time
 
-import api_client
 import streamlit as st
 
+import api_client
 
 POLL_SECONDS = 1.0
 MIN_PROCESSING_SECONDS = 6.0

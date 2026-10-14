@@ -3,14 +3,12 @@
 Convención de nombres: `{tipo}/{doc_id}/{timestamp}_{nombre}` (ver `naming.py`).
 El SDK `oci` se importa de forma diferida: solo se necesita con
 `STORAGE_PROVIDER=oci` (instalar `requirements-oci.txt`).
-
-NOTA: esta implementación aún no se ha ejecutado contra un bucket real.
 """
 from datetime import UTC, datetime
 
 from src.core.config import get_settings
 from src.core.exceptions import StorageError
-from src.storage.base import StorageResult
+from src.storage.base import StorageListing, StorageObject, StorageResult
 from src.storage.naming import build_object_name
 from src.storage.oci_config import load_oci_config
 
@@ -74,3 +72,43 @@ class OCIStorageClient:
                 return False
             raise StorageError(f"No fue posible verificar el objeto en OCI: {exc}") from exc
         return True
+
+    def list_objects(
+        self,
+        prefix: str | None = None,
+        limit: int = 100,
+        start: str | None = None,
+    ) -> StorageListing:
+        client = self._object_storage()
+        bucket = self._settings.OCI_BUCKET_NAME
+        namespace = self._get_namespace()
+        try:
+            response = client.list_objects(
+                namespace,
+                bucket,
+                prefix=prefix,
+                limit=limit,
+                start=start,
+                fields="size,etag,timeCreated,timeModified",
+            )
+        except Exception as exc:
+            raise StorageError(f"list_objects falló: {exc}") from exc
+
+        data = response.data
+        objects = [
+            StorageObject(
+                name=obj.name,
+                size=obj.size,
+                etag=obj.etag,
+                time_modified=obj.time_modified.isoformat() if obj.time_modified else None,
+            )
+            for obj in (data.objects or [])
+        ]
+        return StorageListing(
+            bucket=bucket,
+            namespace=namespace,
+            prefix=prefix,
+            count=len(objects),
+            next_start=getattr(data, "next_start_with", None),
+            objects=objects,
+        )

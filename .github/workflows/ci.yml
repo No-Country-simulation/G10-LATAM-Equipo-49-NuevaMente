@@ -37,7 +37,7 @@ jobs:
         run: pip install -r requirements-dev.txt
 
       - name: Lint (ruff)
-        run: ruff check --config pyproject.toml src tests ../ui
+        run: ruff check --config pyproject.toml src tests scripts ../ui
 
       - name: Verificar que todos los módulos importan sin errores
         run: |

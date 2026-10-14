@@ -14,6 +14,7 @@ langchain-text-splitters>=0.3,<2.0
 chromadb
 
 google-genai>=1.0,<2.0   # DT-09 — proveedor Gemini
+cohere>=5.0,<6.0          # DT-09 — proveedor Cohere
 
 # oci
 # python-dotenv

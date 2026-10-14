@@ -48,10 +48,12 @@ class Settings(BaseSettings):
 
     # Proveedores de IA — DT-09 (🔴 bloqueante, no confirmado formalmente)
     LLM_PROVIDER: str = "mock"          # "gemini" | "mock"
-    EMBEDDING_PROVIDER: str = "mock"    # "gemini" | "mock"
+    EMBEDDING_PROVIDER: str = "mock"    # "gemini" | "cohere" | "mock"
     GEMINI_API_KEY: str | None = None
     GEMINI_MODEL: str = "gemini-2.5-flash"
     GEMINI_EMBEDDING_MODEL: str = "text-embedding-004"
+    COHERE_API_KEY: str | None = None
+    COHERE_EMBEDDING_MODEL: str = "embed-multilingual-v3.0"
     EMBEDDING_DIMENSIONS: int = 768     # dimensiones del modelo de embeddings activo
     LLM_TIMEOUT_SECONDS: int = 30       # Fase 14
     LLM_MAX_RETRIES: int = 1            # Fase 14
@@ -88,7 +90,7 @@ class Settings(BaseSettings):
 
     @model_validator(mode="after")
     def validate_ai_providers(self) -> Self:
-        """Si el proveedor es gemini, exige GEMINI_API_KEY."""
+        """Si el proveedor es gemini o cohere, exige la API key correspondiente."""
         if self.LLM_PROVIDER.lower() == "gemini" and not self.GEMINI_API_KEY:
             raise ValueError(
                 "LLM_PROVIDER='gemini' requiere GEMINI_API_KEY en .env o variables de entorno"
@@ -96,6 +98,10 @@ class Settings(BaseSettings):
         if self.EMBEDDING_PROVIDER.lower() == "gemini" and not self.GEMINI_API_KEY:
             raise ValueError(
                 "EMBEDDING_PROVIDER='gemini' requiere GEMINI_API_KEY en .env o variables de entorno"
+            )
+        if self.EMBEDDING_PROVIDER.lower() == "cohere" and not self.COHERE_API_KEY:
+            raise ValueError(
+                "EMBEDDING_PROVIDER='cohere' requiere COHERE_API_KEY en .env o variables de entorno"
             )
         return self
 

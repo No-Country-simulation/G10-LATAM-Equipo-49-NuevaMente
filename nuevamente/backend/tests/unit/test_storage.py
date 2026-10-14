@@ -112,3 +112,62 @@ def test_factory_rejects_unknown_provider(monkeypatch):
     get_settings.cache_clear()
     with pytest.raises(NuevaMenteError, match="STORAGE_PROVIDER"):
         get_storage_client()
+
+
+def test_list_objects_prefix_and_pagination(tmp_path):
+    client = MockStorageClient(tmp_path / "bucket", bucket="test-bucket")
+    client.upload_bytes("originals/doc_1/a.txt", b"a", "text/plain")
+    client.upload_bytes("originals/doc_1/b.txt", b"b", "text/plain")
+    client.upload_bytes("generated/doc_1/job_1.json", b"{}", "application/json")
+    client.upload_bytes("generated/doc_2/job_2.json", b"{}", "application/json")
+    client.upload_bytes("other.txt", b"x", "text/plain")
+
+    # Prefijo originals/
+    listing = client.list_objects(prefix="originals/")
+    assert listing.bucket == "test-bucket"
+    assert listing.namespace == "mock-namespace"
+    assert listing.prefix == "originals/"
+    assert listing.count == 2
+    names = [o.name for o in listing.objects]
+    assert "originals/doc_1/a.txt" in names
+    assert "originals/doc_1/b.txt" in names
+    assert all(o.size == 1 for o in listing.objects)
+    assert all(o.etag is None for o in listing.objects)
+    assert all(o.time_modified is not None for o in listing.objects)
+
+    # Prefijo generated/
+    listing = client.list_objects(prefix="generated/")
+    assert listing.count == 2
+    names = [o.name for o in listing.objects]
+    assert "generated/doc_1/job_1.json" in names
+    assert "generated/doc_2/job_2.json" in names
+
+    # Sin prefijo (todos)
+    listing = client.list_objects(prefix=None)
+    assert listing.count == 5
+
+    # Paginación con limit
+    listing = client.list_objects(prefix="originals/", limit=1)
+    assert listing.count == 1
+    assert listing.next_start is not None
+    listing2 = client.list_objects(prefix="originals/", limit=1, start=listing.next_start)
+    assert listing2.count == 1
+    assert listing.objects[0].name != listing2.objects[0].name
+    assert listing2.next_start is None
+
+
+def test_list_objects_empty_prefix(tmp_path):
+    client = MockStorageClient(tmp_path / "empty")
+    listing = client.list_objects(prefix="originals/")
+    assert listing.count == 0
+    assert listing.objects == []
+    assert listing.next_start is None
+
+
+def test_mock_client_protocol_completeness(tmp_path):
+    """Verifica que MockStorageClient satisface todo el Protocol StorageClient."""
+    client: object = MockStorageClient(tmp_path)
+    # Duck-typing check: todos los métodos del Protocol existen
+    assert hasattr(client, "upload_bytes")
+    assert hasattr(client, "object_exists")
+    assert hasattr(client, "list_objects")

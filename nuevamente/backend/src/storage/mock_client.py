@@ -7,7 +7,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from src.core.exceptions import StorageError
-from src.storage.base import StorageResult
+from src.storage.base import StorageListing, StorageObject, StorageResult
 
 
 class MockStorageClient:
@@ -39,3 +39,65 @@ class MockStorageClient:
 
     def object_exists(self, object_name: str) -> bool:
         return self._resolve(object_name).is_file()
+
+    def list_objects(
+        self,
+        prefix: str | None = None,
+        limit: int = 100,
+        start: str | None = None,
+    ) -> StorageListing:
+        """Lista objetos en disco local con soporte de prefijo y paginación simple."""
+        if not self._base_dir.exists():
+            return StorageListing(
+                bucket=self._bucket,
+                namespace="mock-namespace",
+                prefix=prefix,
+                count=0,
+                next_start=None,
+                objects=[],
+            )
+
+        all_files = []
+        for p in self._base_dir.rglob("*"):
+            if p.is_file():
+                rel = p.relative_to(self._base_dir)
+                obj_name = str(rel)
+                if prefix is None or obj_name.startswith(prefix):
+                    all_files.append(obj_name)
+
+        all_files.sort()
+
+        if start:
+            try:
+                start_idx = all_files.index(start)
+            except ValueError:
+                start_idx = len(all_files)
+        else:
+            start_idx = 0
+
+        page = all_files[start_idx : start_idx + limit]
+        next_start = None
+        if start_idx + limit < len(all_files):
+            next_start = all_files[start_idx + limit]
+
+        objects = []
+        for obj_name in page:
+            p = self._base_dir / obj_name
+            stat = p.stat()
+            objects.append(
+                StorageObject(
+                    name=obj_name,
+                    size=stat.st_size,
+                    etag=None,
+                    time_modified=datetime.fromtimestamp(stat.st_mtime, UTC).isoformat(),
+                )
+            )
+
+        return StorageListing(
+            bucket=self._bucket,
+            namespace="mock-namespace",
+            prefix=prefix,
+            count=len(page),
+            next_start=next_start,
+            objects=objects,
+        )
