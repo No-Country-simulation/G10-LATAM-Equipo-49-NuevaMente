@@ -5,7 +5,6 @@ Implementación sobre OCI Object Storage que cumple `StorageClient`
 DT-07: `{tipo}/{doc_id}/{timestamp}_{nombre}`.
 """
 from datetime import UTC, datetime
-from zoneinfo import ZoneInfo
 
 import oci
 
@@ -111,15 +110,3 @@ class OCIStorageClient:
             next_start=getattr(data, "next_start_with", None),
             objects=lst,
         )
-
-
-def build_object_name(tipo: str, doc_id: str, nombre: str) -> str:
-    """Construye el nombre de objeto según la convención DT-07:
-    `{tipo}/{doc_id}/{timestamp}_{nombre}`.
-
-    El timestamp es UTC en formato `YYYYMMDDHHMMSS` — sin colisiones razonables
-    y clasificable por fecha en el listado del bucket.
-    """
-    stamp = datetime.now(ZoneInfo("UTC")).strftime("%Y%m%d%H%M%S")
-    sane = "/".join(nombre.split("/"))  # prevenir inyección de rutas desde el nombre del archivo
-    return f"{tipo}/{doc_id}/{stamp}_{sane}"

@@ -77,7 +77,7 @@ async def ingest_document(file: UploadFile = File(...)) -> IngestResponse:
     documento + embeddings en el vectorstore (modo mock, sin red)."""
     content = await file.read()
     result = await run_in_threadpool(_router.ingest, file.filename or "", content)
-    await run_in_threadpool(_orchestrator.register_document, result)
+    await run_in_threadpool(_orchestrator.register_document, result, content)
     return IngestResponse(
         document_id=result.document_id,
         file_type=result.file_type,

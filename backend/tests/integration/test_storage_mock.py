@@ -16,24 +16,24 @@ def _cliente() -> MockStorageClient:
 
 def test_upload_bytes_y_verificacion():
     client = _cliente()
-    res = client.upload_bytes("originales/d1/doc.txt", b"hola", "text/plain")
+    res = client.upload_bytes("originals/d1/doc.txt", b"hola", "text/plain")
     assert client.object_exists(res.object_name)
-    assert not client.object_exists("originales/d1/otro.txt")
+    assert not client.object_exists("originals/d1/otro.txt")
 
 
 def test_upload_original_nombra_por_documento():
     client = _cliente()
     res = upload_original("abc123", "nota.md", b"# titulo", client)
     # convención DT-07: {tipo}/{doc_id}/{timestamp}_{nombre}
-    assert res.object_name.startswith("originales/abc123/")
+    assert res.object_name.startswith("originals/abc123/")
     assert res.object_name.endswith("nota.md")
-    assert len(res.object_name) > len("originales/abc123/") + 8  # timestamp presente
+    assert len(res.object_name) > len("originals/abc123/") + 8  # timestamp presente
 
 
 def test_upload_resultado_json():
     client = _cliente()
     res = upload_result_json("abc123", "job456", b"{}", client)
-    assert res.object_name.startswith("resultados/abc123/")
+    assert res.object_name.startswith("generated/abc123/")
     assert res.object_name.endswith("job456.json")
 
 
@@ -43,12 +43,12 @@ def test_list_objects_por_prefijo_y_paginacion():
     upload_original("doc1", "b.md", b"b", client)
     upload_result_json("doc1", "j1", b"{}", client)
 
-    listing = client.list_objects(prefix="resultados/")
+    listing = client.list_objects(prefix="generated/")
     assert listing.count == 1
-    assert listing.objects[0].name.startswith("resultados/doc1/")
+    assert listing.objects[0].name.startswith("generated/doc1/")
     assert listing.objects[0].name.endswith("j1.json")
 
-    lista_originales = client.list_objects(prefix="originales/")
+    lista_originales = client.list_objects(prefix="originals/")
     assert lista_originales.count == 2
 
 

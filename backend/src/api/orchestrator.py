@@ -60,13 +60,18 @@ class PipelineOrchestrator:
         return self._storage
 
     # ── /ingest ─────────────────────────────────────────────────────
-    def register_document(self, result) -> None:
-        """Persiste el texto crudo en SQLite y carga los chunks + embeddings
-        en el vectorstore (en modo mock, sin red)."""
+    def register_document(self, result, content: bytes) -> None:
+        """Persiste el texto crudo en SQLite, sube el original a OCI
+        y carga los chunks + embeddings en el vectorstore."""
 
         from src.embeddings.factory import get_embedding_provider
+        from src.storage.upload import upload_original
 
         db.save_document(result.document_id, result.filename, result.file_type, result.raw_text)
+
+        # Subir el original al bucket (OCI-003)
+        client = self._storage_client()
+        _ = upload_original(result.document_id, result.filename, content, client)
 
         store = _get_vectorstore()
         chunks = chunk_text(result.raw_text, result.document_id, result.pages)
@@ -136,7 +141,7 @@ class PipelineOrchestrator:
             sources=[Source(chunk_id=m.chunk_id, page=m.page) for m in matches],
             items=items,
         )
-        output.almacenamiento_oci = self._persistir_resultado(request, output, job_id="")
+        output.almacenamiento_oci = self._persistir_resultado(request, output, job_id)
         return output
 
     def _persistir_resultado(
