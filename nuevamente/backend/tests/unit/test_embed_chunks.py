@@ -2,8 +2,8 @@
 import pytest
 
 from src.core.exceptions import NuevaMenteError
-from src.embeddings.embed_chunks import embed_chunks
 from src.embeddings.base import EmbeddingProvider
+from src.embeddings.embed_chunks import embed_chunks
 from src.processing.models import DocumentChunk
 
 

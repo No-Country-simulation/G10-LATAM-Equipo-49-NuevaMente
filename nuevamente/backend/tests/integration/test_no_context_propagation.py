@@ -1,16 +1,15 @@
 """Test de propagación de NO_CONTEXT (BE-RAG-011 / RF-009)."""
+import inspect
 import os
 
 import pytest
-import inspect
 
 from src.api.orchestrator import PipelineOrchestrator
-from src.core.exceptions import NoContextError
-from src.db.session import create_job, get_job, save_document
 from src.db.models import DocumentRecord
+from src.db.session import create_job, get_job, save_document
+from src.embeddings.providers.mock import MockEmbeddingProvider
 from src.rag.retrieval_service import DefaultRetrievalService
 from src.vectorstore.memory import InMemoryVectorStore
-from src.embeddings.providers.mock import MockEmbeddingProvider
 
 
 @pytest.fixture(autouse=True)
@@ -41,8 +40,6 @@ def test_execute_job_sets_no_context_status_when_retrieval_empty():
     orchestrator.retrieval = retrieval  # Inyectar retriever vacío
 
     # Primero crear el documento en la BD para que no falle con DocumentNotFoundError
-    from src.db.session import save_document
-    from src.db.models import DocumentRecord
     from datetime import UTC, datetime
 
     record = DocumentRecord(
@@ -60,8 +57,8 @@ def test_execute_job_sets_no_context_status_when_retrieval_empty():
     save_document(record, [])
     # No añadimos chunks al vectorstore, así que el retrieval devolverá vacío
 
-    from src.db.session import create_job
     from src.api.schemas import AdaptRequest
+    from src.db.session import create_job
 
     job = create_job("doc_con_chunks")
     job_id = job.job_id
@@ -102,7 +99,6 @@ def test_execute_job_sets_error_status_for_other_errors():
     orchestrator.retrieval = retrieval
 
     # Job para documento que no existe en BD
-    from src.db.session import create_job
     job = create_job("doc_no_existe_en_bd")
     job_id = job.job_id
 
@@ -121,7 +117,6 @@ def test_execute_job_sets_error_status_for_other_errors():
     )
     orchestrator.execute_job(job_id, request)
 
-    from src.db.session import get_job
     job = get_job(job_id)
     assert job.status == "ERROR", f"Esperaba ERROR, got {job.status}"
 

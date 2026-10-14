@@ -1,13 +1,10 @@
 """Test de integración: flujo completo chunks → embeddings → ChromaDB (BE-RAG-007)."""
 import os
 
-import pytest
-
 from src.embeddings.embed_chunks import embed_chunks
 from src.embeddings.factory import get_embedding_provider
 from src.ingestion.models import PageText
 from src.processing.chunking import chunk_text
-from src.processing.models import DocumentChunk
 from src.vectorstore.factory import get_vectorstore
 from src.vectorstore.search import similarity_search
 from src.vectorstore.store import persist_chunks
@@ -16,7 +13,6 @@ from src.vectorstore.store import persist_chunks
 def _make_chunks(doc_id: str, text: str) -> list:
     """Crea chunks a partir de texto usando el chunker real."""
     pages = [PageText(page=i + 1, text=text) for i in range(10)]
-    from src.processing.chunking import chunk_text
     chunks = chunk_text(text, doc_id, pages)
     return chunks
 
@@ -110,7 +106,6 @@ def test_chunks_with_different_providers_use_separate_collections(tmp_path):
     os.environ["CHROMA_PERSIST_DIR"] = str(tmp_path / "chroma_mock")
 
     from src.core.config import get_settings
-    from src.embeddings.factory import get_embedding_provider
     from src.vectorstore.client import _collection_name
 
     get_settings.cache_clear()

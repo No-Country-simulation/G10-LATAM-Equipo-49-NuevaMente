@@ -47,14 +47,16 @@ class Settings(BaseSettings):
     FIDELITY_THRESHOLD: float = 0.90
 
     # Proveedores de IA — DT-09 (🔴 bloqueante, no confirmado formalmente)
-    LLM_PROVIDER: str = "mock"          # "gemini" | "mock"
+    LLM_PROVIDER: str = "mock"          # "gemini" | "cohere" | "mock"
     EMBEDDING_PROVIDER: str = "mock"    # "gemini" | "cohere" | "mock"
     GEMINI_API_KEY: str | None = None
     GEMINI_MODEL: str = "gemini-2.5-flash"
     GEMINI_EMBEDDING_MODEL: str = "text-embedding-004"
     COHERE_API_KEY: str | None = None
+    COHERE_MODEL: str = "command-r-plus"
     COHERE_EMBEDDING_MODEL: str = "embed-multilingual-v3.0"
-    EMBEDDING_DIMENSIONS: int = 768     # dimensiones del modelo de embeddings activo
+    COHERE_EMBEDDING_DIMENSIONS: int = 1024
+    EMBEDDING_DIMENSIONS: int = 768     # dimensiones del modelo de embeddings activo (gemini/mock)
     LLM_TIMEOUT_SECONDS: int = 30       # Fase 14
     LLM_MAX_RETRIES: int = 1            # Fase 14
 
@@ -95,6 +97,10 @@ class Settings(BaseSettings):
             raise ValueError(
                 "LLM_PROVIDER='gemini' requiere GEMINI_API_KEY en .env o variables de entorno"
             )
+        if self.LLM_PROVIDER.lower() == "cohere" and not self.COHERE_API_KEY:
+            raise ValueError(
+                "LLM_PROVIDER='cohere' requiere COHERE_API_KEY en .env o variables de entorno"
+            )
         if self.EMBEDDING_PROVIDER.lower() == "gemini" and not self.GEMINI_API_KEY:
             raise ValueError(
                 "EMBEDDING_PROVIDER='gemini' requiere GEMINI_API_KEY en .env o variables de entorno"
@@ -103,7 +109,25 @@ class Settings(BaseSettings):
             raise ValueError(
                 "EMBEDDING_PROVIDER='cohere' requiere COHERE_API_KEY en .env o variables de entorno"
             )
+        if self.EMBEDDING_PROVIDER.lower() == "cohere":
+            if self.COHERE_EMBEDDING_DIMENSIONS <= 0:
+                raise ValueError("COHERE_EMBEDDING_DIMENSIONS debe ser positivo")
+            if (
+                self.COHERE_EMBEDDING_MODEL == "embed-multilingual-v3.0"
+                and self.COHERE_EMBEDDING_DIMENSIONS not in {256, 512, 1024}
+            ):
+                raise ValueError(
+                    "COHERE_EMBEDDING_DIMENSIONS debe ser 256, 512 o 1024 "
+                    "para embed-multilingual-v3.0"
+                )
         return self
+
+    @property
+    def active_embedding_dimensions(self) -> int:
+        """Dimensión efectiva del proveedor usado para indexar y consultar."""
+        if self.EMBEDDING_PROVIDER.lower() == "cohere":
+            return self.COHERE_EMBEDDING_DIMENSIONS
+        return self.EMBEDDING_DIMENSIONS
 
     def resolve_path(self, value: str) -> Path:
         """Convierte una ruta de configuración en absoluta.

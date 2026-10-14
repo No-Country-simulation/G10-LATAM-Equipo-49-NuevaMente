@@ -32,8 +32,11 @@ from src.db.session import (
 )
 from src.embeddings.embed_chunks import embed_chunks
 from src.embeddings.factory import get_embedding_provider
+from src.generation.factory import get_llm_provider
 from src.generation.mock_adapter import MOCK_NOTICE, build_mock_content
+from src.generation.models import ContenidoAdaptado
 from src.generation.profiles import FORMATOS_MVP, NICHOS_MVP, PERFILES_MVP
+from src.generation.prompt_loader import build_generation_prompt, strip_markdown_fences
 from src.ingestion.router import IngestionRouter
 from src.output.schema import (
     AlmacenamientoOCI,
@@ -214,25 +217,50 @@ class PipelineOrchestrator:
         )
         contexto = build_context(matches)  # lanza NoContextError si no hay matches sobre umbral
 
-        # Generar contenido (mock) y validar fidelidad contra el contexto
-        mock_chunks = [
-            type(
-                "_MockChunk",
-                (),
-                {"id": m.chunk_id, "text": m.text, "page": m.page, "section": None},
-            )()
-            for m in matches[:3]
-        ]
-        content, used = build_mock_content(
-            request.perfil, request.formato, request.nicho, mock_chunks
+        # 3. Prompting & Generación con LLM (con fallback a mock)
+        system_prompt, user_prompt = build_generation_prompt(
+            contexto=contexto,
+            perfil=request.perfil,
+            formato=request.formato,
+            nicho=request.nicho,
+            nivel="estandar",
         )
+        full_prompt = f"{system_prompt}\n\n{user_prompt}"
+
+        provider = get_llm_provider()
+        is_mock = False
+
+        try:
+            raw_response = provider.generate(full_prompt)
+            clean_response = strip_markdown_fences(raw_response)
+            content = ContenidoAdaptado.model_validate_json(clean_response)
+            is_mock = False
+        except Exception as exc:
+            log.warning("llm_generation_failed_fallback_to_mock", error=str(exc))
+            mock_chunks = [
+                type(
+                    "_MockChunk",
+                    (),
+                    {"id": m.chunk_id, "text": m.text, "page": m.page, "section": None},
+                )()
+                for m in matches[:3]
+            ]
+            content, used = build_mock_content(
+                request.perfil, request.formato, request.nicho, mock_chunks
+            )
+            is_mock = True
 
         # Paso 4: validación de fidelidad
         validation_service = DefaultValidationService()
         fidelity_eval = validation_service.validate(content.cuerpo, contexto)
 
+        status = "PARTIAL" if is_mock else "SUCCESS"
+        observaciones = fidelity_eval.observaciones or []
+        if is_mock and MOCK_NOTICE not in observaciones:
+            observaciones.append(MOCK_NOTICE)
+
         output = NuevaMenteOutput(
-            status="PARTIAL",
+            status=status,
             metadatos=Metadatos(
                 doc_id=request.document_id,
                 perfil=request.perfil,
@@ -244,7 +272,7 @@ class PipelineOrchestrator:
             evaluacion_calidad=EvaluacionCalidad(
                 fidelidad_score=fidelity_eval.score,
                 claims_no_soportados=fidelity_eval.claims_no_soportados,
-                observaciones=fidelity_eval.observaciones or [MOCK_NOTICE],
+                observaciones=observaciones,
             ),
         )
 

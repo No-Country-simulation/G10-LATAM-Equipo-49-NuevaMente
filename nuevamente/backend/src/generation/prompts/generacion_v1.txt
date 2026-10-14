@@ -22,4 +22,4 @@ CONTEXTO:
 {contexto}
 
 Responde en JSON válido según el schema GeneratedContent
-(titulo, cuerpo, conceptos_clave, prerrequisitos, tiempo_estimado_min, dificultad).
+(cuerpo, conceptos_clave, prerrequisitos, tiempo_estimado_min).
