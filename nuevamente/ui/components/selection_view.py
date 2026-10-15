@@ -656,41 +656,35 @@ def _render_next_button(
         st.rerun()
 
 
+
 def render() -> None:
     """Renderiza la pantalla completa de selección."""
 
     ingest = st.session_state.get("ingest")
 
     if not ingest:
-
         st.session_state["stage"] = "upload"
-
         st.rerun()
-
         return
 
     _selection_styles()
 
-    # =============================================================
-    # ENCABEZADO
-    # =============================================================
+    # BOTÓN VOLVER
+    if st.button("← Volver", key="selection_back"):
+        st.session_state["stage"] = "upload"
+        st.rerun()
 
+    # ENCABEZADO
     _render_page_header()
 
-    # =============================================================
     # ARCHIVO
-    # =============================================================
-
     _render_file_summary(ingest)
 
-    # =============================================================
     # 1. PERFIL
-    # =============================================================
-
     _render_section_header(
         1,
         "Perfil del destinatario",
-        "selecciona el nivel del conocimiento y rol de tu audiencia.",
+        "Selecciona el nivel del conocimiento y rol de tu audiencia.",
     )
 
     perfil = _render_option_cards(
@@ -700,10 +694,7 @@ def render() -> None:
         columns=4,
     )
 
-    # =============================================================
     # 2. FORMATO
-    # =============================================================
-
     _render_section_header(
         2,
         "Formato pedagógico de salida",
@@ -717,10 +708,7 @@ def render() -> None:
         columns=5,
     )
 
-    # =============================================================
     # 3. NICHO
-    # =============================================================
-
     _render_section_header(
         3,
         "Nicho / contexto de aplicación",
@@ -734,10 +722,7 @@ def render() -> None:
         columns=4,
     )
 
-    # =============================================================
     # SIGUIENTE
-    # =============================================================
-
     _render_next_button(
         ingest=ingest,
         perfil=perfil,
