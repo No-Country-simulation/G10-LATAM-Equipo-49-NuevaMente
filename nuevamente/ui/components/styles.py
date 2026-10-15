@@ -421,7 +421,7 @@ h1 {
 
 
 
-    font-weight: 700 !important;
+    font-weight: 800 !important;
 
 
 
@@ -451,17 +451,11 @@ h1 {
 
     color: var(--nm-text);
 
-
-
     font-size: 30px;
 
-    font-weight: 500;
-
-
+    font-weight: 700;
 
     line-height: 1.2;
-
-
 
     margin-top: 0;
 
@@ -1538,7 +1532,36 @@ div.stButton > button:disabled {
 }
 
 
+/* =========================================================
+   ENCABEZADO CON BOTÓN VOLVER
+   ========================================================= */
 
+.st-key-selection_header [data-testid="stHorizontalBlock"] {
+    align-items: center !important;
+}
+
+.st-key-selection_back button {
+    min-width: 100px !important;
+    height: 37px !important;
+    padding: 6px 15px !important;
+    border-radius: 7px !important;
+    font-size: 12px !important;
+    font-weight: 600 !important;
+    background: #FFFFFF !important;
+    color: #0282FB !important;
+    border: 1px solid #0282FB !important;
+    box-shadow: none !important;
+}
+
+.st-key-selection_back button:hover {
+    background: #D7ECFF !important;
+    color: #0282FB !important;
+}
+
+.st-key-selection_back {
+    display: flex;
+    justify-content: flex-end;
+}
 
 
 /* ============================================================
@@ -1651,7 +1674,9 @@ div.stButton > button:disabled {
 
 @media (max-width: 600px) {
 
-
+.st-key-selection_header [data-testid="stHorizontalBlock"] {
+    grid-template-columns: 1fr auto !important;
+}
 
     section[data-testid="stSidebar"] {
 
