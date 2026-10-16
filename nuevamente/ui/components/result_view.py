@@ -49,6 +49,19 @@ def _render_styles() -> None:
                 min-width: 0;
             }
 
+            .nm-results-toolbar {
+                display: flex;
+                align-items: center;
+                gap: 4px;
+                width: 100%;
+                height: 43px;
+                background: #eeeeee;
+                border-radius: 7px;
+                padding: 4px;
+                box-sizing: border-box;
+                margin-bottom: 4px;
+            }
+
             .nm-results-toolbar-item {
                 height: 35px;
                 padding: 0 17px;
@@ -328,45 +341,6 @@ def _render_styles() -> None:
                     padding: 20px 16px;
                 }
             }
-            .st-key-results_toolbar {
-                background: #eeeeee;
-                border-radius: 7px;
-                padding: 4px;
-                margin-bottom: 4px;
-            }
-
-            .st-key-results_toolbar button {
-                height: 35px !important;
-                min-height: 35px !important;
-                border-radius: 6px !important;
-                border: none !important;
-                box-shadow: none !important;
-            }
-
-            .st-key-results_toolbar button p {
-                font-size: 15px !important;
-                font-weight: 500 !important;
-            }
-
-            /* Botones inactivos y Descargar: transparentes */
-            .st-key-results_toolbar button[kind="secondary"] {
-                background: transparent !important;
-                color: #333333 !important;
-            }
-
-            .st-key-results_toolbar button[kind="secondary"]:hover {
-                background: #e0e0e0 !important;
-            }
-
-            /* Vista activa: azul */
-            .st-key-results_toolbar button[kind="primary"] {
-                background: #0282fb !important;
-                color: #ffffff !important;
-            }
-
-            .st-key-results_toolbar button[kind="primary"] p {
-                color: #ffffff !important;
-            }
         </style>
         """
     )
@@ -514,60 +488,25 @@ def _render_header() -> None:
     )
 
 
-def _render_toolbar(result: dict, markdown: str) -> str:
-    """Barra superior funcional. Devuelve la vista activa."""
+def _render_toolbar() -> None:
+    """Renderiza la barra superior de la vista previa."""
+    st.html(
+        """
+        <div class="nm-results-toolbar">
+            <div class="nm-results-toolbar-item active">
+                📄&nbsp;&nbsp; Vista previa
+            </div>
 
-    st.session_state.setdefault("result_view", "preview")
-    current = st.session_state["result_view"]
+            <div class="nm-results-toolbar-item">
+                &lt;/&gt;&nbsp;&nbsp; Markdown
+            </div>
 
-    with st.container(key="results_toolbar"):
-        col_prev, col_md, col_space, col_dl = st.columns(
-            [1.3, 1.3, 3, 1.4],
-            gap="small",
-            vertical_alignment="center",
-        )
-
-        with col_prev:
-            if st.button(
-                "📄  Vista previa",
-                key="view_preview",
-                type="primary" if current == "preview" else "secondary",
-                use_container_width=True,
-            ):
-                st.session_state["result_view"] = "preview"
-                st.rerun()
-
-        with col_md:
-            if st.button(
-                "</>  Markdown",
-                key="view_markdown",
-                type="primary" if current == "markdown" else "secondary",
-                use_container_width=True,
-            ):
-                st.session_state["result_view"] = "markdown"
-                st.rerun()
-
-        with col_dl:
-            if current == "markdown":
-                st.download_button(
-                    "⬇  Descargar",
-                    data=markdown,
-                    file_name="resultado_nuevamente.md",
-                    mime="text/markdown",
-                    key="download_top",
-                    use_container_width=True,
-                )
-            else:
-                st.download_button(
-                    "⬇  Descargar",
-                    data=_generate_pdf(markdown, _get_filename(result)),
-                    file_name="resultado_nuevamente.pdf",
-                    mime="application/pdf",
-                    key="download_top",
-                    use_container_width=True,
-                )
-
-    return current
+            <div class="nm-results-toolbar-item download">
+                ⬇&nbsp;&nbsp; Descargar
+            </div>
+        </div>
+        """
+    )
 
 
 def _render_preview(markdown: str) -> None:
@@ -612,7 +551,6 @@ def _render_markdown_view(markdown: str) -> None:
 def _render_config_panel(result: dict) -> None:
     """Renderiza el resumen de configuración."""
     meta = result.get("metadatos") or {}
-    ingest = st.session_state.get("ingest") or {}
 
     filename = _get_filename(result)
     perfil = meta.get("perfil", "—")
@@ -717,6 +655,14 @@ def _render_actions(result: dict, markdown: str) -> None:
     )
 
     copy_html = html.escape(markdown)
+    # *******************************************************************
+    #  MEJORA AUD-016 — 2026-10-15
+    #  Se precomputa el escapado de backticks fuera del f-string: usar una
+    #  barra invertida dentro de una expresión de f-string es inválido en
+    #  Python 3.11 (la versión del CI), y `ruff` lo marcaba como
+    #  `invalid-syntax`. Precomputar además evita el aviso y es más legible.
+    # *******************************************************************
+    copy_escaped = copy_html.replace("`", "\\`")
 
     st.html(
         f"""
@@ -724,7 +670,7 @@ def _render_actions(result: dict, markdown: str) -> None:
             class="nm-action-button"
             onclick="
                 navigator.clipboard.writeText(
-                    `{copy_html.replace("`", "\\`")}`
+                    `{copy_escaped}`
                 ).then(() => {{
                     this.innerText = '✓ Copiado al portapapeles';
                     setTimeout(() => {{
@@ -797,11 +743,16 @@ def render() -> None:
     main_col, side_col = st.columns([3.4, 1.35], gap="small")
 
     with main_col:
-        view = _render_toolbar(result, markdown)
+        _render_toolbar()
 
-        if view == "preview":
+        tab_preview, tab_markdown = st.tabs(
+            ["Vista previa", "Markdown"]
+        )
+
+        with tab_preview:
             _render_preview(markdown)
-        else:
+
+        with tab_markdown:
             _render_markdown_view(markdown)
 
     with side_col:

@@ -39,6 +39,12 @@ class AdaptRequest(BaseModel):
     perfil: PerfilDestinatario
     formato: FormatoSalida
     nicho: NichoSector = "General"
+    # *********************************************************************
+    #  MEJORA AUD-001 — 2026-10-15
+    #  Campo opcional `tema`: la solicitud puede indicar qué contenido buscar.
+    #  Antes no existía y la recuperación ignoraba lo que pedía el usuario.
+    # *********************************************************************
+    tema: str | None = None
 
 
 class AdaptAcceptedResponse(BaseModel):

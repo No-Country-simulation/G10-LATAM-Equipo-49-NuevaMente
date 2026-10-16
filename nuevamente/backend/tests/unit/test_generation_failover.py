@@ -8,7 +8,18 @@ from src.generation.failover import FailoverLLMProvider
 class _Provider:
     """Provider fake que devuelve o falla según configuración."""
 
-    def __init__(self, name: str, response: str | None = None, should_fail: bool = False, fail_count: int = 0):
+    # *******************************************************************
+    #  MEJORA AUD-016 — 2026-10-15
+    #  Firma partida en varias líneas para respetar el límite de 100
+    #  caracteres de `ruff check` (paso de lint del CI).
+    # *******************************************************************
+    def __init__(
+        self,
+        name: str,
+        response: str | None = None,
+        should_fail: bool = False,
+        fail_count: int = 0,
+    ):
         self.name = name
         self.response = response or f"[{name}] respuesta"
         self.should_fail = should_fail

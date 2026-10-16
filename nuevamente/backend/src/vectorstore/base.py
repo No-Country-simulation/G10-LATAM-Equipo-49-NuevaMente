@@ -46,3 +46,13 @@ class VectorStore(Protocol):
         """
         ...
 
+    # *********************************************************************
+    #  MEJORA AUD-013 / AUD-004 — 2026-10-15
+    #  Se añade `delete` al contrato para poder compensar una ingesta fallida
+    #  (borrar los vectores ya indexados) y limpiar huérfanos. Antes no había
+    #  forma de retirar un documento del índice.
+    # *********************************************************************
+    def delete(self, doc_id: str) -> None:
+        """Elimina todos los vectores de `doc_id` del índice (idempotente)."""
+        ...
+

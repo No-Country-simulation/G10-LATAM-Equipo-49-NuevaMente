@@ -5,15 +5,43 @@ sin necesidad de credenciales reales ni red.
 """
 import pytest
 
+# *****************************************************************************
+#  MEJORA AUD-016 — 2026-10-15
+#  Se parten las cadenas JSON largas (antes en una sola línea) para respetar la
+#  longitud máxima de 100 caracteres que exige `ruff check`, de modo que el
+#  paso de lint del CI quede limpio.
+# *****************************************************************************
+_JSON_HOLA = (
+    '{"cuerpo": "hola", "conceptos_clave": ["a"], "prerrequisitos": [],'
+    ' "tiempo_estimado_min": 5}'
+)
+_JSON_OK = (
+    '{"cuerpo": "ok", "conceptos_clave": [], "prerrequisitos": [],'
+    ' "tiempo_estimado_min": 1}'
+)
+
 
 class _FakeCohereClient:
     """Cliente Cohere v2 falso que devuelve respuestas JSON válidas."""
 
-    def __init__(self, content: str | None = '{"cuerpo": "texto generado", "conceptos_clave": ["a"], "prerrequisitos": [], "tiempo_estimado_min": 10}'):
+    def __init__(
+        self,
+        content: str | None = (
+            '{"cuerpo": "texto generado", "conceptos_clave": ["a"],'
+            ' "prerrequisitos": [], "tiempo_estimado_min": 10}'
+        ),
+    ):
         self.content = content
         self.calls = []
 
-    def chat(self, model: str, messages: list[dict], temperature: float, response_format: dict, max_tokens: int):
+    def chat(
+        self,
+        model: str,
+        messages: list[dict],
+        temperature: float,
+        response_format: dict,
+        max_tokens: int,
+    ):
         self.calls.append({
             "model": model,
             "messages": messages,
@@ -60,12 +88,12 @@ def _make_provider(client, max_retries: int = 1):
 
 def test_generate_returns_json_text():
     """`generate` devuelve el texto JSON del primer bloque de contenido."""
-    client = _FakeCohereClient('{"cuerpo": "hola", "conceptos_clave": ["a"], "prerrequisitos": [], "tiempo_estimado_min": 5}')
+    client = _FakeCohereClient(_JSON_HOLA)
     provider = _make_provider(client)
 
     result = provider.generate("prompt de prueba", temperature=0.2)
 
-    assert result == '{"cuerpo": "hola", "conceptos_clave": ["a"], "prerrequisitos": [], "tiempo_estimado_min": 5}'
+    assert result == _JSON_HOLA
 
 
 def test_generate_passes_correct_parameters():
@@ -118,7 +146,7 @@ def test_generate_retries_on_failure():
                     "message": type(
                         "Message",
                         (),
-                        {"content": [type("C", (), {"text": '{"cuerpo": "ok", "conceptos_clave": [], "prerrequisitos": [], "tiempo_estimado_min": 1}'})()]}
+                        {"content": [type("C", (), {"text": _JSON_OK})()]},
                     ),
                 },
             )()
@@ -127,7 +155,7 @@ def test_generate_retries_on_failure():
     provider = _make_provider(client)
 
     result = provider.generate("hola")
-    assert result == '{"cuerpo": "ok", "conceptos_clave": [], "prerrequisitos": [], "tiempo_estimado_min": 1}'
+    assert result == _JSON_OK
     assert attempts["count"] == 2
 
 

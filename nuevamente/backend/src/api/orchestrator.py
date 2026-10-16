@@ -5,9 +5,12 @@ aquí (regla de COMP-11: "main.py solo orquesta").
 
 Estado de implementación:
     - Ingesta (RF-001): COMPLETA → validar, extraer, limpiar, chunkear,
-      subir el original y persistir documento + chunks + indexar en vectorstore.
-    - Adaptación (`/adapt`): RAG real con fallback a mock. El retrieval, el LLM
-      y la validación de fidelidad se integran progresivamente.
+      generar embeddings, subir el original y persistir documento + chunks +
+      indexar (de forma atómica, con compensación ante fallos — AUD-004).
+    - Adaptación (`/adapt`): RAG real con fallback a mock. La consulta de
+      retrieval depende de la solicitud (`tema`/nicho) — AUD-001. Si no hay
+      contexto suficiente se devuelve `status=NO_CONTEXT` como resultado de
+      negocio (AUD-002).
 """
 from datetime import UTC, datetime
 
@@ -24,6 +27,7 @@ from src.core.logging import get_logger, log_stage
 from src.db.models import DocumentRecord, Job
 from src.db.session import (
     create_job,
+    delete_document,
     get_chunks,
     get_document,
     save_document,
@@ -34,29 +38,28 @@ from src.embeddings.embed_chunks import embed_chunks
 from src.embeddings.factory import get_embedding_provider
 from src.generation.factory import get_llm_provider
 from src.generation.mock_adapter import MOCK_NOTICE, build_mock_content
-from src.generation.models import ContenidoAdaptado
+from src.generation.models import AdaptationRequest
+from src.generation.orchestrator import GenerationOrchestrator
 from src.generation.profiles import FORMATOS_MVP, NICHOS_MVP, PERFILES_MVP
-from src.generation.prompt_loader import build_generation_prompt, strip_markdown_fences
 from src.ingestion.router import IngestionRouter
-from src.output.schema import (
-    AlmacenamientoOCI,
-    EvaluacionCalidad,
-    Metadatos,
-    NuevaMenteOutput,
-    Source,
-)
+from src.output.assembler import assemble_output
+from src.output.schema import AlmacenamientoOCI, NuevaMenteOutput, Source
 from src.processing.chunking import chunk_text
 from src.processing.cleaning import prepare_document_text
 from src.rag.context_builder import build_context
 from src.rag.retrieval_service import DefaultRetrievalService
-from src.storage.base import StorageClient
+from src.storage.base import StorageClient, StorageResult
 from src.storage.factory import get_storage_client
 from src.storage.upload import upload_original, upload_result_json
 from src.validation.fidelity_checker import DefaultValidationService
+from src.validation.models import FidelityEvaluation
+from src.vectorstore.base import VectorStore
 from src.vectorstore.factory import get_vectorstore
 from src.vectorstore.store import persist_chunks
 
 log = get_logger(__name__)
+
+_OVERVIEW_CHUNKS = 3
 
 
 class PipelineOrchestrator:
@@ -69,6 +72,8 @@ class PipelineOrchestrator:
     ) -> None:
         self._storage_client = storage_client
         self._router = ingestion_router or IngestionRouter()
+        # Inyectable en tests; si es None se construye por solicitud.
+        self.retrieval: DefaultRetrievalService | None = None
 
     def _storage(self) -> StorageClient:
         return self._storage_client or get_storage_client()
@@ -78,7 +83,18 @@ class PipelineOrchestrator:
         """RF-001: valida, extrae, limpia, chunkea, sube el original y persiste.
 
         Lanza:
-            InvalidFileError, ScannedPdfError, DocumentTooLargeError, StorageError.
+            InvalidFileError, ScannedPdfError, DocumentTooLargeError,
+            EmbeddingError, VectorStoreError, StorageError.
+
+        *********************************************************************
+        MEJORA AUD-004 — 2026-10-15
+        Antes se subía el original y se persistía en SQLite ANTES de generar
+        embeddings e indexar: si los embeddings fallaban, quedaban 1 documento +
+        chunks + 1 original huérfano y 0 vectores (estado parcial que además era
+        adaptable en silencio). Ahora los embeddings se calculan PRIMERO (sin
+        efectos) y, si algo falla después, se compensa borrando índice, fila y
+        objeto. Criterio de cierre: tras un fallo, 0 filas y 0 objetos.
+        *********************************************************************
         """
         with log_stage(log, "ingestion", filename=filename, size_bytes=len(content)):
             result = self._router.ingest(filename, content)
@@ -92,29 +108,36 @@ class PipelineOrchestrator:
         if not chunks:
             raise InvalidFileError("No se pudo generar ningún fragmento del documento.")
 
-        with log_stage(log, "storage_upload", document_id=doc_id):
-            stored = upload_original(doc_id, result.filename, content, self._storage())
-
-        record = DocumentRecord(
-            document_id=doc_id,
-            filename=result.filename,
-            file_type=result.file_type,
-            size_bytes=len(content),
-            page_count=len(result.pages),
-            char_count=len(text),
-            chunk_count=len(chunks),
-            storage_object_name=stored.object_name,
-            warnings=result.warnings,
-            created_at=datetime.now(UTC).isoformat(timespec="seconds"),
-        )
-        with log_stage(log, "persist", document_id=doc_id):
-            save_document(record, chunks)
-
-        # --- Paso 3.5: indexar chunks en el vectorstore ---
+        # Paso 3: embeddings ANTES de cualquier efecto observable.
         with log_stage(log, "embeddings", document_id=doc_id):
             vectors = embed_chunks(chunks, get_embedding_provider())
-        with log_stage(log, "vectorstore_index", document_id=doc_id):
-            persist_chunks(chunks, vectors, get_vectorstore())
+
+        store = get_vectorstore()
+        stored: StorageResult | None = None
+        try:
+            with log_stage(log, "storage_upload", document_id=doc_id):
+                stored = upload_original(doc_id, result.filename, content, self._storage())
+
+            record = DocumentRecord(
+                document_id=doc_id,
+                filename=result.filename,
+                file_type=result.file_type,
+                size_bytes=len(content),
+                page_count=len(result.pages),
+                char_count=len(text),
+                chunk_count=len(chunks),
+                storage_object_name=stored.object_name,
+                warnings=result.warnings,
+                created_at=datetime.now(UTC).isoformat(timespec="seconds"),
+            )
+            with log_stage(log, "persist", document_id=doc_id):
+                save_document(record, chunks)
+
+            with log_stage(log, "vectorstore_index", document_id=doc_id):
+                persist_chunks(chunks, vectors, store)
+        except Exception:
+            self._compensate_ingest(doc_id, stored, store)
+            raise
 
         return IngestResponse(
             document_id=doc_id,
@@ -127,6 +150,27 @@ class PipelineOrchestrator:
             storage_object_name=record.storage_object_name,
             warnings=record.warnings,
         )
+
+    def _compensate_ingest(
+        self,
+        doc_id: str,
+        stored: StorageResult | None,
+        store: VectorStore,
+    ) -> None:
+        """Deshace una ingesta parcial (índice, filas y objeto) — AUD-004."""
+        try:
+            store.delete(doc_id)
+        except Exception as exc:  # pragma: no cover - best effort
+            log.warning("ingest_rollback_index_failed", document_id=doc_id, error=str(exc))
+        try:
+            delete_document(doc_id)
+        except Exception as exc:  # pragma: no cover - best effort
+            log.warning("ingest_rollback_db_failed", document_id=doc_id, error=str(exc))
+        if stored is not None:
+            try:
+                self._storage().delete_object(stored.object_name)
+            except Exception as exc:  # pragma: no cover - best effort
+                log.warning("ingest_rollback_object_failed", document_id=doc_id, error=str(exc))
 
     # ---------------------------------------------------------------- adaptación
     @staticmethod
@@ -158,6 +202,34 @@ class PipelineOrchestrator:
             )
         return create_job(request.document_id)
 
+    @staticmethod
+    def _overview_query(chunks: list) -> str:
+        """Consulta *overview* cuando la solicitud no especifica `tema`.
+
+        *********************************************************************
+        MEJORA AUD-001 — 2026-10-15
+        Antes, sin tema, la consulta era `chunks[0].text[:200]`, un recorte
+        arbitrario del inicio del documento. Ahora se resume el documento con
+        sus primeros fragmentos (similitud al centroide aproximado).
+        *********************************************************************
+        """
+        return " ".join(chunk.text for chunk in chunks[:_OVERVIEW_CHUNKS])
+
+    def _ensure_indexed(self, doc_id: str, chunks: list, store: VectorStore) -> None:
+        """Reindexa el documento si el índice está vacío (tras un reinicio).
+
+        *********************************************************************
+        MEJORA AUD-007 — 2026-10-15
+        Con el índice en memoria un reinicio dejaba `count(doc)=0` y el pipeline
+        respondía con contenido mock SIN avisar. Si detectamos un índice vacío,
+        reindexamos desde los chunks persistidos (reproducible); si la
+        reindexación falla, el error se propaga (nada de degradación silenciosa).
+        *********************************************************************
+        """
+        with log_stage(log, "vectorstore_reindex", document_id=doc_id):
+            vectors = embed_chunks(chunks, get_embedding_provider())
+            persist_chunks(chunks, vectors, store)
+
     def run_adaptation(
         self, request: AdaptRequest, job_id: str | None = None
     ) -> NuevaMenteOutput:
@@ -166,8 +238,10 @@ class PipelineOrchestrator:
 
         Lanza:
             DocumentNotFoundError: si `request.document_id` no existe.
-            NoContextError: si el retrieval no encuentra contexto suficiente
-                (regla de negocio RF-009 — NO se degrada a mock).
+            NoContextError: si el documento no tiene fragmentos persistidos
+                (fallo técnico); si el retrieval no encuentra contexto
+                suficiente se devuelve `status=NO_CONTEXT` como resultado de
+                negocio (RF-009, AUD-002).
         """
         document = get_document(request.document_id)
         if document is None:
@@ -179,102 +253,78 @@ class PipelineOrchestrator:
             raise NoContextError("El documento no tiene fragmentos disponibles.")
 
         store = get_vectorstore()
-        # Fallback técnico: el documento existe pero no está indexado (índice vacío)
         if store.count(doc_id=request.document_id) == 0:
-            content, used = build_mock_content(
-                request.perfil, request.formato, request.nicho, chunks
-            )
-            output = NuevaMenteOutput(
-                status="PARTIAL",
-                metadatos=Metadatos(
-                    doc_id=request.document_id,
-                    perfil=request.perfil,
-                    formato=request.formato,
-                    nicho=request.nicho,
-                    sources=[Source(chunk_id=c.id, page=c.page) for c in used],
-                ),
-                contenido_adaptado=content,
-                evaluacion_calidad=EvaluacionCalidad(
-                    fidelidad_score=None, observaciones=[MOCK_NOTICE]
-                ),
-            )
+            self._ensure_indexed(request.document_id, chunks, store)
 
-            if job_id is not None:
-                self._store_result(output, document.storage_object_name, request, job_id)
-            return output
-
-        # RAG real: retrieval + context_builder + validación
-        # NoContextError se propaga: es regla de negocio (RF-009), no fallo técnico
-        retrieval_service = DefaultRetrievalService()
-        # Incluir el primer chunk como "tema" para que la query tenga términos
-        # del documento y los embeddings mock produzcan match (no hay semántica).
-        tema_para_retrieval = chunks[0].text[:200] if chunks else None
+        retrieval_service = self.retrieval or DefaultRetrievalService()
+        # AUD-001: la consulta depende de la solicitud (tema). Sin tema, overview.
+        tema = request.tema or self._overview_query(chunks)
         matches = retrieval_service.retrieve(
             doc_id=request.document_id,
             perfil=request.perfil,
             nicho=request.nicho,
-            tema=tema_para_retrieval,
+            tema=tema,
         )
-        contexto = build_context(matches)  # lanza NoContextError si no hay matches sobre umbral
-
-        # 3. Prompting & Generación con LLM (con fallback a mock)
-        system_prompt, user_prompt = build_generation_prompt(
-            contexto=contexto,
-            perfil=request.perfil,
-            formato=request.formato,
-            nicho=request.nicho,
-            nivel="estandar",
-        )
-        full_prompt = f"{system_prompt}\n\n{user_prompt}"
-
-        provider = get_llm_provider()
-        is_mock = False
 
         try:
-            raw_response = provider.generate(full_prompt)
-            clean_response = strip_markdown_fences(raw_response)
-            content = ContenidoAdaptado.model_validate_json(clean_response)
-            is_mock = False
-        except Exception as exc:
-            log.warning("llm_generation_failed_fallback_to_mock", error=str(exc))
-            mock_chunks = [
-                type(
-                    "_MockChunk",
-                    (),
-                    {"id": m.chunk_id, "text": m.text, "page": m.page, "section": None},
-                )()
-                for m in matches[:3]
-            ]
-            content, used = build_mock_content(
-                request.perfil, request.formato, request.nicho, mock_chunks
-            )
-            is_mock = True
-
-        # Paso 4: validación de fidelidad
-        validation_service = DefaultValidationService()
-        fidelity_eval = validation_service.validate(content.cuerpo, contexto)
-
-        status = "PARTIAL" if is_mock else "SUCCESS"
-        observaciones = fidelity_eval.observaciones or []
-        if is_mock and MOCK_NOTICE not in observaciones:
-            observaciones.append(MOCK_NOTICE)
-
-        output = NuevaMenteOutput(
-            status=status,
-            metadatos=Metadatos(
+            contexto = build_context(matches)
+        except NoContextError:
+            # AUD-002: NO_CONTEXT es un resultado de negocio (HTTP 200), no un 500.
+            output = assemble_output(
                 doc_id=request.document_id,
                 perfil=request.perfil,
                 formato=request.formato,
                 nicho=request.nicho,
-                sources=[Source(chunk_id=m.chunk_id, page=m.page) for m in matches[:3]],
-            ),
-            contenido_adaptado=content,
-            evaluacion_calidad=EvaluacionCalidad(
-                fidelidad_score=fidelity_eval.score,
-                claims_no_soportados=fidelity_eval.claims_no_soportados,
-                observaciones=observaciones,
-            ),
+                contenido=None,
+                fidelidad=FidelityEvaluation(score=None),
+                sources=[],
+            )
+            if job_id is not None:
+                self._store_result(output, document.storage_object_name, request, job_id)
+            return output
+
+        # Generación con LLM (COMP-06) con fallback a mock.
+        gen_request = AdaptationRequest(
+            document_id=request.document_id,
+            perfil=request.perfil,
+            formato=request.formato,
+            nicho=request.nicho,
         )
+        provider = get_llm_provider()
+        is_mock = False
+        try:
+            content = GenerationOrchestrator().generate_content(
+                gen_request, contexto, provider
+            )
+        except Exception as exc:
+            log.warning("llm_generation_failed_fallback_to_mock", error=str(exc))
+            # AUD-020: se reutilizan los chunks reales (via DB), sin `_MockChunk`.
+            chunks_by_id = {chunk.id: chunk for chunk in chunks}
+            mock_chunks = [
+                chunks_by_id[m.chunk_id] for m in matches if m.chunk_id in chunks_by_id
+            ][:3]
+            content, _used = build_mock_content(
+                request.perfil, request.formato, request.nicho, mock_chunks
+            )
+            is_mock = True
+
+        # Paso 4: validación de fidelidad.
+        validation_service = DefaultValidationService()
+        fidelity_eval = validation_service.validate(content.cuerpo, contexto)
+
+        sources = [Source(chunk_id=m.chunk_id, page=m.page) for m in matches[:3]]
+        output = assemble_output(
+            doc_id=request.document_id,
+            perfil=request.perfil,
+            formato=request.formato,
+            nicho=request.nicho,
+            contenido=content,
+            fidelidad=fidelity_eval,
+            sources=sources,
+            es_mock=is_mock,
+        )
+        if is_mock and MOCK_NOTICE not in output.evaluacion_calidad.observaciones:
+            output.evaluacion_calidad.observaciones.append(MOCK_NOTICE)
 
         if job_id is not None:
             self._store_result(output, document.storage_object_name, request, job_id)

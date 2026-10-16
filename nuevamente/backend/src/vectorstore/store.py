@@ -1,7 +1,7 @@
 """Persistencia de embeddings en el Vector Store (BE-RAG-007)."""
 from dataclasses import dataclass
 
-from src.core.exceptions import NuevaMenteError
+from src.core.exceptions import VectorStoreError
 from src.processing.models import DocumentChunk
 from src.vectorstore.base import VectorStore, VectorStoreMatch
 from src.vectorstore.client import get_chroma_collection
@@ -101,6 +101,20 @@ class ChromaVectorStore:
         results = self._collection.get(where={"doc_id": doc_id}, include=[])
         return len(results["ids"]) if results["ids"] else 0
 
+    # *********************************************************************
+    #  MEJORA AUD-013 / AUD-004 — 2026-10-15
+    #  `delete` permite compensar una ingesta fallida y limpiar los vectores
+    #  de un documento (el Protocol ya lo declara).
+    # *********************************************************************
+    def delete(self, doc_id: str) -> None:
+        """Elimina todos los vectores de `doc_id` (idempotente)."""
+        try:
+            self._collection.delete(where={"doc_id": doc_id})
+        except Exception as exc:
+            raise VectorStoreError(
+                f"No fue posible eliminar los vectores del documento: {exc}"
+            ) from exc
+
 
 def persist_chunks(
     chunks: list[DocumentChunk],
@@ -109,16 +123,36 @@ def persist_chunks(
 ) -> None:
     """Empaqueta `chunks` + `vectors` y los persiste vía `store.add(...)`.
 
+    *********************************************************************
+    MEJORA AUD-013 — 2026-10-15
+    Antes solo se guardaba `{"page": ...}`; ahora se persisten también
+    `position`, `section`, `char_start` y `char_end`, de modo que el índice
+    permite reconstruir orden y sección y no solo la página.
+
+    MEJORA AUD-022b — 2026-10-15
+    Un fallo de persistencia en el índice vectorial se reporta como
+    `VectorStoreError`, no como `NuevaMenteError` genérico.
+
     Lanza:
-        NuevaMenteError: si la persistencia falla.
+        VectorStoreError: si la persistencia falla.
+    *********************************************************************
     """
     if not chunks:
         return
     try:
         doc_id = chunks[0].doc_id
         chunk_ids = [chunk.id for chunk in chunks]
-        metadatas = [{"page": chunk.page} for chunk in chunks]
+        metadatas = [
+            {
+                "page": chunk.page,
+                "position": chunk.position,
+                "section": chunk.section,
+                "char_start": chunk.char_start,
+                "char_end": chunk.char_end,
+            }
+            for chunk in chunks
+        ]
         documents = [chunk.text for chunk in chunks]
         store.add(doc_id, chunk_ids, vectors, metadatas, documents)
     except Exception as exc:
-        raise NuevaMenteError(f"Fallo al persistir chunks en el vectorstore: {exc}") from exc
+        raise VectorStoreError(f"Fallo al persistir chunks en el vectorstore: {exc}") from exc

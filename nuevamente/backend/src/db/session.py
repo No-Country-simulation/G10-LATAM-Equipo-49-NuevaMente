@@ -115,6 +115,22 @@ def get_document(document_id: str) -> DocumentRecord | None:
     return DocumentRecord(**data)
 
 
+def delete_document(document_id: str) -> None:
+    """Elimina un documento y sus chunks de forma atómica (compensación AUD-004).
+
+    *********************************************************************
+    MEJORA AUD-004 — 2026-10-15
+    Soporte de la compensación de ingesta: si el pipeline falla después de
+    persistir, estas filas deben poder deshacerse para no dejar documentos
+    "fantasma" adaptables en silencio. Idempotente: borrar algo inexistente
+    no es error.
+    *********************************************************************
+    """
+    with _connect() as conn:
+        conn.execute("DELETE FROM chunks WHERE document_id = ?", (document_id,))
+        conn.execute("DELETE FROM documents WHERE document_id = ?", (document_id,))
+
+
 def get_chunks(document_id: str) -> list[DocumentChunk]:
     """Recupera los chunks de un documento, ordenados por posición."""
     with _connect() as conn:
@@ -181,3 +197,25 @@ def get_job(job_id: str) -> Job | None:
     with _connect() as conn:
         row = conn.execute("SELECT * FROM jobs WHERE job_id = ?", (job_id,)).fetchone()
     return _row_to_job(row) if row is not None else None
+
+
+def reconcile_stale_jobs() -> int:
+    """Marca como `ERROR` los jobs que quedaron `QUEUED`/`PROCESSING` — AUD-018.
+
+    *********************************************************************
+    MEJORA AUD-018 — 2026-10-15
+    Las tareas de adaptación viven en el proceso (`BackgroundTasks`). Si el
+    servidor se reinicia, esos jobs quedan colgados para siempre y el cliente
+    consulta en vano (la UI corta por timeout a los 60 s). Al arrancar se
+    marcan como `ERROR` para que `GET /adapt/{job_id}` responda de inmediato.
+
+    Devuelve cuántos jobs se reconciliaron (0 si no había ninguno).
+    *********************************************************************
+    """
+    with _connect() as conn:
+        cursor = conn.execute(
+            "UPDATE jobs SET status = 'ERROR', error = ? "
+            "WHERE status IN ('QUEUED', 'PROCESSING')",
+            ("El trabajo se interrumpió por un reinicio del servidor.",),
+        )
+        return cursor.rowcount

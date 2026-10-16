@@ -1,7 +1,10 @@
 """Cliente HTTP hacia la API del monolito (COMP-10 → COMP-11).
 
 La interfaz no importa nada del backend: solo habla HTTP. La URL se configura
-con la variable de entorno `API_URL` (por defecto http://127.0.0.1:8011).
+con la variable de entorno `API_URL` (por defecto http://127.0.0.1:8000).
+
+MEJORA AUD-021 — 2026-10-15: el docstring decía "8011" mientras el código y la
+API usan 8000; se corrige el texto para que coincida.
 """
 import os
 

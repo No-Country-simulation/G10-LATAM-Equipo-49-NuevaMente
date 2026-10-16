@@ -37,7 +37,7 @@ def render() -> None:
     st.markdown(
         '<div class="nm-page-description">'
         "Sube el documento que deseas procesar. "
-        "Aceptamos archivos PDF, DOCX, TXT o imágenes."
+        "Aceptamos archivos PDF, MD o TXT."
         "</div>",
         unsafe_allow_html=True,
     )
@@ -49,9 +49,16 @@ def render() -> None:
         title_slot = st.empty()
         subtitle_slot = st.empty()
 
+        # *******************************************************************
+        #  MEJORA AUD-015 — 2026-10-15
+        #  La UI ofrecía "DOCX" e "imágenes" y aceptaba `docx`, pero el backend
+        #  solo soporta PDF/MD/TXT (`ALLOWED_EXTENSIONS`), así que el usuario
+        #  recibía un 400 INVALID_FILE. Se alinean la lista y el texto con el
+        #  contrato real del backend.
+        # *******************************************************************
         uploaded = st.file_uploader(
             "Documento",
-            type=["pdf", "docx", "md", "markdown", "txt"],
+            type=["pdf", "md", "markdown", "txt"],
             label_visibility="collapsed",
         )
 

@@ -73,6 +73,19 @@ class OCIStorageClient:
             raise StorageError(f"No fue posible verificar el objeto en OCI: {exc}") from exc
         return True
 
+    def delete_object(self, object_name: str) -> None:
+        """Elimina un objeto del bucket OCI; idempotente ante 404 (AUD-004, 2026-10-15)."""
+        try:
+            self._object_storage().delete_object(
+                self._get_namespace(), self._settings.OCI_BUCKET_NAME, object_name
+            )
+        except StorageError:
+            raise
+        except Exception as exc:
+            if getattr(exc, "status", None) == 404:
+                return
+            raise StorageError(f"No fue posible borrar el objeto en OCI: {exc}") from exc
+
     def list_objects(
         self,
         prefix: str | None = None,

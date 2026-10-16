@@ -16,6 +16,14 @@ PROJECT_ROOT = Path(__file__).resolve().parents[3]
 
 _SQLITE_PREFIX = "sqlite:///"
 
+# *****************************************************************************
+#  MEJORA AUD-012 — 2026-10-15
+#  Dimensión real del proveedor mock (debe coincidir con
+#  `embeddings.providers.mock.DIM`). Se usa para nombrar la colección del
+#  vector store con la dimensión efectiva, no con un valor configurado a mano.
+# *****************************************************************************
+MOCK_EMBEDDING_DIMENSIONS = 256
+
 
 class Settings(BaseSettings):
     """Esquema de configuración de la aplicación.
@@ -47,22 +55,72 @@ class Settings(BaseSettings):
     FIDELITY_THRESHOLD: float = 0.90
 
     # Proveedores de IA — DT-09 (🔴 bloqueante, no confirmado formalmente)
-    LLM_PROVIDER: str = "mock"          # "gemini" | "cohere" | "mock"
-    EMBEDDING_PROVIDER: str = "mock"    # "gemini" | "cohere" | "mock"
+    # *********************************************************************
+    #  MEJORA DT-09 / RNF-005 — 2026-10-15
+    #  Se amplía el selector para que embeddings y generación se cambien SOLO
+    #  con `.env`, sin tocar código:
+    #    - `openai`  → cualquier API compatible con OpenAI (OpenAI, Azure,
+    #      OpenRouter, Groq, Together, DeepSeek, Ollama, vLLM, LM Studio…).
+    #    - `custom`  → una clase propia, referenciada por ruta punteada en
+    #      `LLM_PROVIDER_CLASS` / `EMBEDDING_PROVIDER_CLASS`.
+    # *********************************************************************
+    LLM_PROVIDER: str = "mock"          # "gemini" | "cohere" | "openai" | "custom" | "mock"
+    EMBEDDING_PROVIDER: str = "mock"    # "gemini" | "cohere" | "openai" | "custom" | "mock"
     GEMINI_API_KEY: str | None = None
-    GEMINI_MODEL: str = "gemini-2.5-flash"
-    GEMINI_EMBEDDING_MODEL: str = "text-embedding-004"
+    # *********************************************************************
+    #  MEJORA AUD-003 — 2026-10-15
+    #  Los modelos por defecto anteriores (`gemini-2.5-flash`,
+    #  `text-embedding-004`) fueron dados de baja según la documentación
+    #  oficial de deprecaciones de Gemini. Se fijan IDs vigentes para que
+    #  `EMBEDDING_PROVIDER=gemini` no falle "out of the box".
+    # *********************************************************************
+    GEMINI_MODEL: str = "gemini-3.8-flash"
+    GEMINI_EMBEDDING_MODEL: str = "gemini-embedding-2"
     COHERE_API_KEY: str | None = None
     COHERE_MODEL: str = "command-r-plus"
     COHERE_EMBEDDING_MODEL: str = "embed-multilingual-v3.0"
     COHERE_EMBEDDING_DIMENSIONS: int = 1024
     COHERE_MAX_TOKENS: int = 4096
-    EMBEDDING_DIMENSIONS: int = 768     # dimensiones del modelo de embeddings activo (gemini/mock)
+
+    # *********************************************************************
+    #  MEJORA DT-09 / RNF-005 — 2026-10-15
+    #  Proveedor genérico compatible con OpenAI. Todos estos valores se leen
+    #  del `.env`; el operador puede apuntar a otro modelo/endpoint sin tocar
+    #  ni una línea de código. Las claves `*_API_KEY` son opcionales para
+    #  servidores locales (Ollama, vLLM, LM Studio).
+    # *********************************************************************
+    LLM_MODEL: str | None = None
+    LLM_BASE_URL: str | None = None
+    LLM_API_KEY: str | None = None
+    LLM_MAX_TOKENS: int = 4096
+    LLM_JSON_MODE: bool = True
+    EMBEDDING_MODEL: str | None = None
+    EMBEDDING_BASE_URL: str | None = None
+    EMBEDDING_API_KEY: str | None = None
+    # *********************************************************************
+    #  MEJORA DT-09 / RNF-005 — 2026-10-15
+    #  Registro por ruta punteada: `paquete.modulo:Clase`. Solo se usa cuando
+    #  el proveedor correspondiente vale `custom`. Permite añadir un proveedor
+    #  nuevo sin editar las fábricas.
+    # *********************************************************************
+    LLM_PROVIDER_CLASS: str | None = None
+    EMBEDDING_PROVIDER_CLASS: str | None = None
+
+    # Dimensiones del modelo de embeddings activo (gemini/cohere/openai/custom).
+    # Para `openai`/`custom` debe coincidir con la dimensión REAL del modelo.
+    EMBEDDING_DIMENSIONS: int = 768
     LLM_TIMEOUT_SECONDS: int = 30       # Fase 14
     LLM_MAX_RETRIES: int = 1            # Fase 14
 
-    # Vector Store — DT-02 (pendiente: Semana 2)
-    VECTORSTORE_PROVIDER: str = "memory"    # "memory" | "chroma"
+    # Vector Store — DT-02
+    # *********************************************************************
+    #  MEJORA AUD-007 — 2026-10-15
+    #  El valor por defecto era `memory`: el índice vivía solo en RAM y se
+    #  perdía en silencio al reiniciar (SQLite persistía, los vectores no).
+    #  Ahora el defecto es un índice persistente (`chroma`); `memory` queda
+    #  reservado para tests/desarrollo.
+    # *********************************************************************
+    VECTORSTORE_PROVIDER: str = "chroma"    # "memory" | "chroma"
     CHROMA_PERSIST_DIR: str = "./data/chroma"
 
     # Almacenamiento de objetos — DT-07, REQ-18
@@ -70,7 +128,12 @@ class Settings(BaseSettings):
     MOCK_STORAGE_DIR: str = "./data/mock_oci"
     OCI_CONFIG_FILE: str = "~/.oci/config"
     OCI_PROFILE: str = "DEFAULT"
-    OCI_BUCKET_NAME: str = "nuevamente-g10"
+    # *********************************************************************
+    #  MEJORA AUD-021 — 2026-10-15
+    #  El valor por defecto anterior (`nuevamente-g10`) era un bucket concreto
+    #  y obsoleto; se usa un nombre genérico que el operador debe sobrescribir.
+    # *********************************************************************
+    OCI_BUCKET_NAME: str = "nuevamente-docs"
     OCI_NAMESPACE: str | None = None
 
     # Persistencia de sesión — DT-08
@@ -121,14 +184,96 @@ class Settings(BaseSettings):
                     "COHERE_EMBEDDING_DIMENSIONS debe ser 256, 512 o 1024 "
                     "para embed-multilingual-v3.0"
                 )
+        # *****************************************************************
+        #  MEJORA DT-09 / RNF-005 — 2026-10-15
+        #  Validación del proveedor genérico compatible con OpenAI y del
+        #  proveedor `custom` por ruta punteada. La API key es opcional (hay
+        #  servidores locales sin autenticación), pero la URL base y el modelo
+        #  son obligatorios para fallar temprano y con un mensaje claro.
+        # *****************************************************************
+        openai_aliases = {"openai", "openai_compatible"}
+        if self.LLM_PROVIDER.lower() in openai_aliases:
+            if not self.LLM_BASE_URL:
+                raise ValueError(
+                    "LLM_PROVIDER='openai' requiere LLM_BASE_URL en .env "
+                    "(p. ej. https://api.openai.com/v1)"
+                )
+            if not self.LLM_MODEL:
+                raise ValueError("LLM_PROVIDER='openai' requiere LLM_MODEL en .env")
+        if self.LLM_PROVIDER.lower() == "custom" and not self.LLM_PROVIDER_CLASS:
+            raise ValueError(
+                "LLM_PROVIDER='custom' requiere LLM_PROVIDER_CLASS='paquete.modulo:Clase'"
+            )
+        if self.EMBEDDING_PROVIDER.lower() in openai_aliases:
+            if not self.EMBEDDING_BASE_URL:
+                raise ValueError(
+                    "EMBEDDING_PROVIDER='openai' requiere EMBEDDING_BASE_URL en .env "
+                    "(p. ej. https://api.openai.com/v1)"
+                )
+            if not self.EMBEDDING_MODEL:
+                raise ValueError(
+                    "EMBEDDING_PROVIDER='openai' requiere EMBEDDING_MODEL en .env"
+                )
+            if self.EMBEDDING_DIMENSIONS <= 0:
+                raise ValueError(
+                    "EMBEDDING_DIMENSIONS debe ser la dimensión real (> 0) del "
+                    "modelo de embeddings configurado"
+                )
+        if (
+            self.EMBEDDING_PROVIDER.lower() == "custom"
+            and not self.EMBEDDING_PROVIDER_CLASS
+        ):
+            raise ValueError(
+                "EMBEDDING_PROVIDER='custom' requiere "
+                "EMBEDDING_PROVIDER_CLASS='paquete.modulo:Clase'"
+            )
         return self
 
     @property
     def active_embedding_dimensions(self) -> int:
-        """Dimensión efectiva del proveedor usado para indexar y consultar."""
-        if self.EMBEDDING_PROVIDER.lower() == "cohere":
+        """Dimensión efectiva del proveedor usado para indexar y consultar.
+
+        *********************************************************************
+        MEJORA AUD-012 — 2026-10-15
+        El proveedor mock tiene una dimensión fija real (256). Antes se
+        devolvía `EMBEDDING_DIMENSIONS` (768), de modo que la colección se
+        nombraba con una dimensión que no correspondía a los vectores
+        almacenados y se mezclaban espacios vectoriales incompatibles.
+        *********************************************************************
+        """
+        provider = self.EMBEDDING_PROVIDER.lower()
+        if provider == "cohere":
             return self.COHERE_EMBEDDING_DIMENSIONS
+        if provider == "mock":
+            return MOCK_EMBEDDING_DIMENSIONS
         return self.EMBEDDING_DIMENSIONS
+
+    @property
+    def active_embedding_model(self) -> str:
+        """Modelo de embeddings activo (para segregar la colección del índice).
+
+        *********************************************************************
+        MEJORA AUD-012 — 2026-10-15
+        Cambiar de modelo de embeddings debe cambiar la colección del vector
+        store; antes el nombre solo dependía del proveedor y la dimensión.
+        *********************************************************************
+        """
+        provider = self.EMBEDDING_PROVIDER.lower()
+        if provider == "gemini":
+            return self.GEMINI_EMBEDDING_MODEL
+        if provider == "cohere":
+            return self.COHERE_EMBEDDING_MODEL
+        # *****************************************************************
+        #  MEJORA DT-09 / RNF-005 — 2026-10-15
+        #  El proveedor genérico ya no se segrega con la etiqueta "hash-tf"
+        #  (que corresponde al mock): usa el modelo configurado, de modo que
+        #  cambiar `EMBEDDING_MODEL` en `.env` cambia la colección del índice.
+        # *****************************************************************
+        if provider in {"openai", "openai_compatible"}:
+            return self.EMBEDDING_MODEL or "openai"
+        if provider == "custom":
+            return self.EMBEDDING_MODEL or "custom"
+        return "hash-tf"
 
     def resolve_path(self, value: str) -> Path:
         """Convierte una ruta de configuración en absoluta.

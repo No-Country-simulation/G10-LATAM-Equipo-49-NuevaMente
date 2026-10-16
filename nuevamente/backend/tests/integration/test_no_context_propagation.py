@@ -31,7 +31,6 @@ def test_execute_job_sets_no_context_status_when_retrieval_empty():
 
     # Usar store en memoria vacío
     store = InMemoryVectorStore()
-    embedder = MockEmbeddingProvider()
 
     # Crear retriever que siempre devuelve vacío
     retrieval = DefaultRetrievalService(store=store, embedder=MockEmbeddingProvider())
@@ -92,7 +91,6 @@ def test_execute_job_sets_error_status_for_other_errors():
     os.environ["STORAGE_PROVIDER"] = "mock"
 
     store = InMemoryVectorStore()
-    embedder = MockEmbeddingProvider()
     retrieval = DefaultRetrievalService(store=store, embedder=MockEmbeddingProvider())
 
     orchestrator = PipelineOrchestrator()

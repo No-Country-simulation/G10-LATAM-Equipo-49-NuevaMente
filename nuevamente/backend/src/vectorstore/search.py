@@ -1,6 +1,6 @@
 """Búsqueda por similitud (BE-RAG-008, OUT-005)."""
 from src.core.config import get_settings
-from src.core.exceptions import NuevaMenteError, StorageError
+from src.core.exceptions import NuevaMenteError, VectorStoreError
 from src.vectorstore.base import VectorStore, VectorStoreMatch
 
 
@@ -18,15 +18,21 @@ def similarity_search(
     proveedor del vectorstore (`memory` o `chroma`).
 
     Lanza:
-        StorageError: si el Vector Store no está disponible o la colección no
-            existe (OUT-005 — manejo de error).
+        VectorStoreError: si el Vector Store no está disponible o la colección
+            no existe (OUT-005 — manejo de error).
     """
     try:
         resultados = store.query(query_vector, top_k, doc_id=doc_id)
     except NuevaMenteError:
         raise
     except Exception as exc:
-        raise StorageError(
+        # *********************************************************************
+        #  MEJORA AUD-022b — 2026-10-15
+        #  Un fallo del índice vectorial ya no se reporta como `STORAGE_ERROR`
+        #  (ese código es para el almacenamiento de objetos). Se usa el código
+        #  preciso `VECTORSTORE_ERROR` (502).
+        # *********************************************************************
+        raise VectorStoreError(
             f"No fue posible ejecutar la búsqueda por similitud: {exc}"
         ) from exc
 

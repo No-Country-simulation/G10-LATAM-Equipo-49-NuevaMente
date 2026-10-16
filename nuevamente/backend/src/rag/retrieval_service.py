@@ -41,11 +41,20 @@ class DefaultRetrievalService:
         nicho: str | None = None,
         tema: str | None = None,
     ) -> list[VectorStoreMatch]:
+        # *********************************************************************
+        #  MEJORA AUD-001 — 2026-10-15
+        #  Antes la query SIEMPRE incluía el `perfil` y, en el orquestador, el
+        #  inicio del documento; el tema pedido por el usuario no influía. Ahora,
+        #  cuando hay `tema`, la consulta se construye con el tema (+ nicho) y el
+        #  perfil queda como pista solo cuando NO hay tema (el perfil describe el
+        #  estilo del destinatario, no el contenido a recuperar).
+        # *********************************************************************
         settings = get_settings()
-        query = " ".join(t for t in (perfil, nicho, tema) if t).strip() or "general"
+        parts = [tema, nicho] if tema else [perfil, nicho]
+        query = " ".join(t for t in parts if t).strip() or "general"
         vector = self._embedder.embed_query(query)
         # similarity_search aplica el umbral de RETRIEVAL_MIN_SCORE y
-        # envuelve fallos del store en StorageError (OUT-005).
+        # envuelve fallos del store en VectorStoreError (OUT-005).
         return similarity_search(
             vector, self._store, settings.RETRIEVAL_TOP_K, doc_id=doc_id
         )

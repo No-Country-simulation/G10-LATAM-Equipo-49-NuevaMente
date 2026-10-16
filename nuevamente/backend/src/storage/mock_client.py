@@ -40,6 +40,14 @@ class MockStorageClient:
     def object_exists(self, object_name: str) -> bool:
         return self._resolve(object_name).is_file()
 
+    def delete_object(self, object_name: str) -> None:
+        """Elimina el archivo local; idempotente (AUD-004, 2026-10-15)."""
+        path = self._resolve(object_name)
+        try:
+            path.unlink(missing_ok=True)
+        except OSError as exc:
+            raise StorageError(f"No fue posible borrar el objeto: {exc}") from exc
+
     def list_objects(
         self,
         prefix: str | None = None,
@@ -61,7 +69,14 @@ class MockStorageClient:
         for p in self._base_dir.rglob("*"):
             if p.is_file():
                 rel = p.relative_to(self._base_dir)
-                obj_name = str(rel)
+                # ****************************************************************
+                #  MEJORA — 2026-10-15 (portabilidad Windows/Linux)
+                #  Se usa `as_posix()` para que los nombres de objeto usen siempre
+                #  "/" como separador (como OCI). Antes, en Windows, `str(rel)`
+                #  producía "\" y el filtrado por prefijo "originals/" no
+                #  encontraba nada.
+                # ****************************************************************
+                obj_name = rel.as_posix()
                 if prefix is None or obj_name.startswith(prefix):
                     all_files.append(obj_name)
 
