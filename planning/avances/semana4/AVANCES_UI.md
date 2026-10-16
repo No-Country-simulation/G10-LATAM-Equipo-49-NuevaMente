@@ -1,10 +1,15 @@
 # Avances de la interfaz — NuevaMente
 
-**Equipo:** G10-LATAM-Equipo-49-NuevaMente.
-**Responsable:** Santiago Guarnizo.
-**Roles asignados:** LLM Engineer, Frontend.
-**Fecha:** 16 de octubre de 2026.
-**Módulo:** Interfaz web (Streamlit) — `ui/`.
+**Equipo:** G10-LATAM-Equipo-49-NuevaMente
+
+**Responsable:** Santiago Guarnizo
+
+**Roles asignados:** LLM Engineer, Frontend
+
+**Fecha:** 16 de octubre de 2026
+
+**Módulo:** Interfaz web (Streamlit) — `ui/`
+
 
 ---
 
@@ -202,11 +207,16 @@ Se verificó que `httpx` ya estaba declarado en `backend/requirements.txt`, por 
 
 # 2 Avances de la interfaz — NuevaMente
 
-**Equipo:** G10-LATAM-Equipo-49-NuevaMente.
-**Responsable:** Viviana Hurtado.
-**Roles asignados:** UX/UI Designer, Frontend.
-**Fecha:** 15 de octubre de 2026.
-**Módulo:** Interfaz web (Streamlit) — `ui/`.
+**Equipo:** G10-LATAM-Equipo-49-NuevaMente
+
+**Responsable:** Viviana Hurtado
+
+**Roles asignados:** UX/UI Designer, Frontend
+
+**Fecha:** 15 de octubre de 2026
+
+**Módulo:** Interfaz web (Streamlit) — `ui/`
+
 
 ## Resumen
 
