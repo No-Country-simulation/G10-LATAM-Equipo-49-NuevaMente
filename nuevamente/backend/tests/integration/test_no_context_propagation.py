@@ -102,7 +102,7 @@ def test_execute_job_sets_error_status_for_other_errors():
 
     from src.api.schemas import AdaptRequest
     request = AdaptRequest(
-        document_id="doc_que_no_existe_en_bd",
+        document_id="doc_no_existe_en_bd",
         perfil="Principiante / Transición de Carrera",
         formato="Guía Práctica Paso a Paso (Tutorial)",
         nicho="General",
