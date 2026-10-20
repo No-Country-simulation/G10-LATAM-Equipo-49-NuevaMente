@@ -37,7 +37,7 @@ def render() -> None:
     st.markdown(
         '<div class="nm-page-description">'
         "Sube el documento que deseas procesar. "
-        "Aceptamos archivos PDF, DOCX, TXT o imágenes."
+        "Aceptamos archivos PDF, MD, TXT."
         "</div>",
         unsafe_allow_html=True,
     )
@@ -51,7 +51,7 @@ def render() -> None:
 
         uploaded = st.file_uploader(
             "Documento",
-            type=["pdf", "docx", "md", "markdown", "txt"],
+            type=["pdf", "docx", "markdown", "txt"],
             label_visibility="collapsed",
         )
 
