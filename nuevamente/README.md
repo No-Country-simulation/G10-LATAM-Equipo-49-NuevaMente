@@ -217,28 +217,6 @@ El proveedor y el modelo de **embeddings** y de **generación** se eligen por
 | --- | --- | --- |
 | Gemini | `gemini` | `GEMINI_API_KEY`, `GEMINI_MODEL`, `GEMINI_EMBEDDING_MODEL` |
 | Cohere | `cohere` | `COHERE_API_KEY`, `COHERE_MODEL`, `COHERE_EMBEDDING_MODEL` |
-| **Compatible con OpenAI** | `openai` | `LLM_BASE_URL`, `LLM_MODEL`, `LLM_API_KEY`, `EMBEDDING_BASE_URL`, `EMBEDDING_MODEL`, `EMBEDDING_API_KEY`, `EMBEDDING_DIMENSIONS` |
-| **Proveedor propio** | `custom` | `LLM_PROVIDER_CLASS` / `EMBEDDING_PROVIDER_CLASS` (`paquete.modulo:Clase`) |
-| Mock (sin red) | `mock` | — |
-
-- El modo **compatible con OpenAI** funciona con OpenAI, Azure OpenAI, OpenRouter,
-  Groq, Together, DeepSeek, Ollama, vLLM, LM Studio, LocalAI… (usa `httpx`, ya
-  incluido). La API key es opcional para servidores locales.
-- El modo **custom** resuelve tu clase por ruta punteada (`importlib`); no hay que
-  editar las fábricas. La clase solo debe cumplir el Protocol por duck typing.
-- `EMBEDDING_DIMENSIONS` debe coincidir con la dimensión **real** del modelo de
-  embeddings: se usa para nombrar la colección del índice vectorial.
-- Ejemplos completos en `.env.example`.
-
-## Pruebas y calidad
-
-```bash
-cd backend
-pip install -r requirements-dev.txt
-pytest -q                                              # unitarias + integración + auditoría (mock, sin red)
-pytest tests/audit -q -rxXs                            # solo la suite de regresión de la auditoría
-ruff check --config pyproject.toml src tests ../ui     # lint (el mismo que corre el CI)
-```
 
 ## Limitaciones conocidas
 - `/adapt` usa mock para generación LLM: no hay LLM real ni juez LLM de fidelidad. `fidelidad_score` es un valor **heurístico** (solapamiento de tokens) marcado como tal en `observaciones`; estado `PARTIAL`. RAG retrieval y embeddings reales **sí funcionan** con ChromaDB persistente.
