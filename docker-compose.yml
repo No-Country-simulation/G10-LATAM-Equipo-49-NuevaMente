@@ -1,0 +1,60 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: nuevamente-backend
+    environment:
+      - STORAGE_PROVIDER=oci
+      - OCI_CONFIG_FILE=/root/.oci/config
+      - CHROMA_PERSIST_DIR=/app/data/chroma
+      - DATABASE_URL=sqlite:///./data/sqlite/nuevamente.db
+      - MOCK_STORAGE_DIR=/app/data/mock_oci
+      - LOG_LEVEL=INFO
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - ./nuevamente/data:/app/data
+      - ~/.oci:/root/.oci:ro
+      - ~/.ssh/nuevamente.pem:/root/.ssh/nuevamente.pem:ro
+    ports:
+      - "8000:8000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    networks:
+      - nuevamente-network
+
+  ui:
+    build:
+      context: .
+      dockerfile: Dockerfile.ui
+    container_name: nuevamente-ui
+    environment:
+      - API_URL=http://backend:8000
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - ./nuevamente/data:/app/data
+      - ~/.oci:/root/.oci:ro
+    ports:
+      - "8501:8501"
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8501/_stcore/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    networks:
+      - nuevamente-network
+
+networks:
+  nuevamente-network:
+    driver: bridge
+
+volumes:
+  data:
