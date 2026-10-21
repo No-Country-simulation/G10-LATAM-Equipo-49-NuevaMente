@@ -7,6 +7,9 @@ services:
     environment:
       - STORAGE_PROVIDER=oci
       - OCI_CONFIG_FILE=/root/.oci/config
+      - OCI_BUCKET_NAME=bucket-20260921-2152-nuevamente-docs-test
+      - OCI_NAMESPACE=axkf02paerjf
+      - OCI_PREFIX=
       - CHROMA_PERSIST_DIR=/app/data/chroma
       - DATABASE_URL=sqlite:///./data/sqlite/nuevamente.db
       - MOCK_STORAGE_DIR=/app/data/mock_oci
