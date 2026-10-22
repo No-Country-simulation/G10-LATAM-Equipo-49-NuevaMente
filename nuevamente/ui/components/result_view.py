@@ -874,7 +874,7 @@ def render() -> None:
         use_container_width=True,
         key="upload_another_document",
     ):
-        for key in ("ingest", "job_id", "result"):
+        for key in ("ingest", "source_file", "job_id", "result"):
             st.session_state.pop(key, None)
 
         st.session_state["stage"] = "upload"

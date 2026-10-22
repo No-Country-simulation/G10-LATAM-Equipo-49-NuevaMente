@@ -1,13 +1,17 @@
 """Cliente HTTP hacia la API del monolito (COMP-10 → COMP-11).
 
 La interfaz no importa nada del backend: solo habla HTTP. La URL se configura
-con la variable de entorno `API_URL` (por defecto http://127.0.0.1:8011).
+con la variable de entorno `API_URL` (por defecto http://localhost:8000).
 """
 import os
 
 import httpx
 
-API_URL = os.getenv("API_URL", "http://127.0.0.1:8000").rstrip("/")
+API_URL = os.getenv("API_URL", "http://localhost:8000").rstrip("/")
+N8N_WEBHOOK_URL = os.getenv(
+    "N8N_WEBHOOK_URL",
+    "http://localhost:5678/webhook/webhook-nuevamente-v2",
+).rstrip("/")
 
 _CONTENT_TYPES = {
     ".pdf": "application/pdf",
@@ -96,4 +100,53 @@ def poll_adapt_result(job_id: str) -> dict:
     response = _request("GET", f"/adapt/{job_id}")
     _raise_for_error(response)
     return response.json()
+
+
+def submit_to_workflow(
+    file_bytes: bytes,
+    filename: str,
+    perfil: str,
+    formato: str,
+    nicho: str | None,
+) -> dict:
+    """Envía el documento y las opciones al workflow de n8n y devuelve su resultado."""
+    extension = os.path.splitext(filename)[1].lower()
+    content_type = _CONTENT_TYPES.get(extension, "application/octet-stream")
+    try:
+        response = httpx.post(
+            N8N_WEBHOOK_URL,
+            data={
+                "perfil": perfil,
+                "formato": formato,
+                "nicho": nicho or "General",
+            },
+            files={"file": (filename, file_bytes, content_type)},
+            timeout=300.0,
+        )
+    except httpx.TimeoutException as exc:
+        raise ApiError("WORKFLOW_TIMEOUT", "El workflow de n8n tardó demasiado en responder.") from exc
+    except httpx.HTTPError as exc:
+        raise ApiError(
+            "WORKFLOW_UNREACHABLE",
+            f"No fue posible conectar con n8n en {N8N_WEBHOOK_URL}. ¿Está activo?",
+        ) from exc
+
+    _raise_for_error(response)
+    try:
+        payload = response.json()
+    except ValueError as exc:
+        raise ApiError(
+            "INVALID_WORKFLOW_RESPONSE", "n8n devolvió una respuesta que no es JSON."
+        ) from exc
+
+    if (
+        not isinstance(payload, dict)
+        or payload.get("status") != "success"
+        or not isinstance(payload.get("data"), dict)
+    ):
+        raise ApiError(
+            "INVALID_WORKFLOW_RESPONSE",
+            "n8n no devolvió el resultado esperado del backend.",
+        )
+    return payload["data"]
 

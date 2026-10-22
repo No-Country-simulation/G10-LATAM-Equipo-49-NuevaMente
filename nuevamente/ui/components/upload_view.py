@@ -37,7 +37,7 @@ def render() -> None:
     st.markdown(
         '<div class="nm-page-description">'
         "Sube el documento que deseas procesar. "
-        "Aceptamos archivos PDF, DOCX, TXT o imágenes."
+        "Aceptamos archivos PDF, Markdown o TXT."
         "</div>",
         unsafe_allow_html=True,
     )
@@ -51,7 +51,7 @@ def render() -> None:
 
         uploaded = st.file_uploader(
             "Documento",
-            type=["pdf", "docx", "md", "markdown", "txt"],
+            type=["pdf", "md", "markdown", "txt"],
             label_visibility="collapsed",
         )
 
@@ -124,22 +124,13 @@ def render() -> None:
         use_container_width=True,
         disabled=uploaded is None,
     ):
-        try:
-            result = api_client.ingest(
-                uploaded.getvalue(),
-                uploaded.name,
-            )
-            st.session_state["ingest"] = result
-            st.session_state["stage"] = "selection"
-            st.rerun()
-        except api_client.ApiError as exc:
-            st.session_state["error"] = {
-                "code": exc.code,
-                "message": exc.message,
-            }
-            st.session_state["error_back"] = "upload"
-            st.session_state["stage"] = "error"
-            st.rerun()
+        st.session_state["source_file"] = {
+            "bytes": uploaded.getvalue(),
+            "filename": uploaded.name,
+        }
+        st.session_state["ingest"] = {"filename": uploaded.name}
+        st.session_state["stage"] = "selection"
+        st.rerun()
 
     st.markdown(
         "</div>",

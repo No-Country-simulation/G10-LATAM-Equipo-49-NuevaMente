@@ -603,7 +603,6 @@ def _render_option_cards(
 
 
 def _render_next_button(
-    ingest: dict,
     perfil: dict,
     formato: dict,
     nicho: dict,
@@ -622,13 +621,20 @@ def _render_next_button(
     ):
 
         try:
+            source_file = st.session_state.get("source_file")
+            if not source_file:
+                raise api_client.ApiError(
+                    "FILE_NOT_FOUND", "Vuelve a cargar el documento antes de continuar."
+                )
 
-            job = api_client.request_adapt(
-                ingest["document_id"],
-                perfil["valor"],
-                formato["valor"],
-                nicho["valor"],
-            )
+            with st.spinner("Enviando el documento a n8n y esperando el resultado..."):
+                result = api_client.submit_to_workflow(
+                    source_file["bytes"],
+                    source_file["filename"],
+                    perfil["valor"],
+                    formato["valor"],
+                    nicho["valor"],
+                )
 
         except api_client.ApiError as exc:
 
@@ -637,11 +643,7 @@ def _render_next_button(
                 "message": exc.message,
             }
 
-            st.session_state["error_back"] = (
-                "upload"
-                if exc.status_code == 404
-                else "selection"
-            )
+            st.session_state["error_back"] = "selection"
 
             st.session_state["stage"] = "error"
 
@@ -649,9 +651,8 @@ def _render_next_button(
 
             return
 
-        st.session_state["job_id"] = job["job_id"]
-
-        st.session_state["stage"] = "loading"
+        st.session_state["result"] = result
+        st.session_state["stage"] = "result"
 
         st.rerun()
 
@@ -724,7 +725,6 @@ def render() -> None:
 
     # SIGUIENTE
     _render_next_button(
-        ingest=ingest,
         perfil=perfil,
         formato=formato,
         nicho=nicho,

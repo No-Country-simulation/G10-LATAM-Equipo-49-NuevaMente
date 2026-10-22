@@ -6,7 +6,11 @@ _HINTS = {
     "SCANNED_PDF": "El PDF parece una imagen escaneada. Sube una versión con texto seleccionable.",
     "DOCUMENT_TOO_LARGE": "Divide el documento en partes más pequeñas.",
     "DOCUMENT_NOT_FOUND": "La API ya no recuerda el documento. Vuelve a subirlo.",
+    "FILE_NOT_FOUND": "Vuelve a cargar el documento antes de continuar.",
     "API_UNREACHABLE": "Enciende la API (`run_api`) y vuelve a intentarlo.",
+    "WORKFLOW_UNREACHABLE": "Enciende n8n y verifica que el workflow esté activo.",
+    "WORKFLOW_TIMEOUT": "El workflow excedió el tiempo de espera. Revisa las ejecuciones en n8n.",
+    "FIDELIDAD_BAJA": "El resultado no alcanzó el umbral de fidelidad configurado en n8n.",
     "STORAGE_ERROR": "El almacenamiento no está disponible. Revisa la configuración.",
 }
 

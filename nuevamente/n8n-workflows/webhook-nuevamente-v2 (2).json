@@ -1,0 +1,328 @@
+{
+  "name": "webhook-nuevamente-v2",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "webhook-nuevamente-v2",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "cc84d49c-ed90-4a59-a8da-bd8367a95f7a",
+      "name": "Webhook",
+      "webhookId": "6ca33f25-df2b-46e9-95bf-45fb33be3bb9"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:8000/ingest",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "parameterType": "formBinaryData",
+              "name": "file",
+              "inputDataFieldName": "file"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        208,
+        0
+      ],
+      "id": "e9da270a-6605-47c1-99e7-7222983d572f",
+      "name": "Ingest Document"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost:8000/adapt",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "document_id",
+              "value": "={{ $('Ingest Document').item.json.document_id }}"
+            },
+            {
+              "name": "perfil",
+              "value": "={{ $('Webhook').item.json.body.perfil }}"
+            },
+            {
+              "name": "formato",
+              "value": "={{ $('Webhook').item.json.body.formato }}"
+            },
+            {
+              "name": "nicho",
+              "value": "={{ $('Webhook').item.json.body.nicho || 'General' }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        416,
+        0
+      ],
+      "id": "b22f695d-6bbc-4bea-bc90-ef0458bda81e",
+      "name": "Request Adaptation"
+    },
+    {
+      "parameters": {
+        "amount": 3
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        624,
+        0
+      ],
+      "id": "3287078e-3a20-40a9-a2cf-6e48f356924c",
+      "name": "Wait 3 seconds",
+      "webhookId": "4b95d012-69c4-417f-baff-6c4bb4027c34"
+    },
+    {
+      "parameters": {
+        "url": "=http://localhost:8000/adapt/{{ $('Request Adaptation').item.json.job_id }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        832,
+        0
+      ],
+      "id": "6bfeab91-3f7a-47e9-98df-a08a7e70797c",
+      "name": "Check Job Status"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "44848e1f-b59a-4825-b355-b69319b7c3a4",
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "PROCESSING",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            },
+            {
+              "id": "c297f98e-35e1-4ea1-9c93-96540180878a",
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "QUEUED",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        992,
+        176
+      ],
+      "id": "813abc99-8478-4053-9796-18c8e9b9b031",
+      "name": "Is Job Complete?"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "0777b0ef-fd52-4dd1-bfc3-8abb2ee47ed1",
+              "leftValue": "={{ $json.evaluacion_calidad.fidelidad_score ?? 0 }}",
+              "rightValue": 0.9,
+              "operator": {
+                "type": "number",
+                "operation": "gte",
+                "name": "filter.operator.gte"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1216,
+        240
+      ],
+      "id": "23c20fba-e506-4162-8f39-69c2308905a8",
+      "name": "Check Fidelity Score"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ {\n  status: 'success',\n  message: 'Contenido educativo generado exitosamente',\n  data: $json,\n  metadata: {\n    job_id: $('Request Adaptation').item.json.job_id,\n    document_id: $('Ingest Document').item.json.document_id\n  }\n} }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        1456,
+        144
+      ],
+      "id": "81ae7164-1bc9-4ca7-a418-5fdd2a7fb5dc",
+      "name": "Respond Success"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ {\n  error: {\n    code: 'FIDELIDAD_BAJA',\n    message: 'El contenido generado no cumple con el umbral de fidelidad requerido (>= 0.9).',\n    score_obtenido: $json.evaluacion_calidad.fidelidad_score ?? 0,\n    umbral_requerido: 0.9\n  }\n} }}",
+        "options": {
+          "responseCode": 400
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        1456,
+        320
+      ],
+      "id": "3b5bc6be-d3f9-4b74-bd01-fedb2aa7914a",
+      "name": "Respond Fidelity Error"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Ingest Document",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ingest Document": {
+      "main": [
+        [
+          {
+            "node": "Request Adaptation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Request Adaptation": {
+      "main": [
+        [
+          {
+            "node": "Wait 3 seconds",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 3 seconds": {
+      "main": [
+        [
+          {
+            "node": "Check Job Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Job Status": {
+      "main": [
+        [
+          {
+            "node": "Is Job Complete?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Job Complete?": {
+      "main": [
+        [
+          {
+            "node": "Wait 3 seconds",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Check Fidelity Score",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Fidelity Score": {
+      "main": [
+        [
+          {
+            "node": "Respond Success",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond Fidelity Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "f20dcd6f-3273-425e-8b5a-e43d0b9f27cf",
+  "meta": {
+    "instanceId": "758fc4015d7e76bfcfa019df7ff27559a266c60db3d788f9849cf4e85cf2f0c7"
+  },
+  "id": "LRXD5uNvaX96oFx1",
+  "tags": []
+}
