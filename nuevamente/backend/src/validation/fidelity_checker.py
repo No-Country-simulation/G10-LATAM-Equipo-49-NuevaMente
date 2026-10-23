@@ -49,6 +49,14 @@ class DefaultValidationService:
     """Implementación de `ValidationService` compone `extract_claims` +
     verificación (mock por overlap) + `aggregate_score`."""
 
+    # MEJORA AUD-009 — 2026-10-15: la verificación se declara explícitamente
+    # como heurística (no es un juez LLM) para no presentar el score como una
+    # métrica con más rigor del que tiene (RF-014).
+    HEURISTIC_NOTICE = (
+        "Fidelidad estimada por heurística de solapamiento de tokens "
+        "(no validada por un juez LLM)."
+    )
+
     def validate(self, contenido_generado: str, contexto_fuente: str) -> FidelityEvaluation:
         claims = extract_claims(contenido_generado)
         evaluations = [
@@ -58,8 +66,13 @@ class DefaultValidationService:
         no_soportados = [
             e.claim.text for e in evaluations if e.veredicto == "NO"
         ]
+        observaciones = (
+            [self.HEURISTIC_NOTICE]
+            if score is not None
+            else ["LLM-juez no disponible (VAL-005)"]
+        )
         return FidelityEvaluation(
             score=score if score is not None else None,
             claims_no_soportados=no_soportados,
-            observaciones=[] if score is not None else ["LLM-juez no disponible (VAL-005)"],
+            observaciones=observaciones,
         )

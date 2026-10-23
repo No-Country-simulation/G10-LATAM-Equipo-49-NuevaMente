@@ -54,6 +54,18 @@ class StorageClient(Protocol):
         """Verifica que `object_name` exista en el bucket (post-upload, OCI-005)."""
         ...
 
+    def delete_object(self, object_name: str) -> None:
+        """Elimina `object_name` del bucket (compensación de ingesta, AUD-004).
+
+        *********************************************************************
+        MEJORA AUD-004 — 2026-10-15
+        Se añade al contrato para que el orquestador pueda deshacer la subida
+        de un original cuando el pipeline de ingesta falla después de subirlo.
+        Implementaciones idempotentes: borrar algo inexistente no es error.
+        *********************************************************************
+        """
+        ...
+
     def list_objects(
         self,
         prefix: str | None = None,

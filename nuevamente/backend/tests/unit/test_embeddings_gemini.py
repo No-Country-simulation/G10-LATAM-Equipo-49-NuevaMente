@@ -11,6 +11,23 @@ from src.core.exceptions import LLMProviderError
 from src.embeddings.factory import get_embedding_provider
 from src.embeddings.providers.gemini import GeminiEmbeddingProvider
 
+# *****************************************************************************
+#  MEJORA AUD-011 / AUD-016 — 2026-10-15
+#  El proveedor ahora llama a `embed_content(model=..., contents=..., config=...)`
+#  y solo reintenta errores reintentables (429/5xx). Los *fakes* de este test se
+#  ajustan: aceptan `config`, y sus fallos simulados usan `_RetryableError`
+#  (status_code=503) en vez de `errors.APIError("...")`, que además fallaba al
+#  construirse (TypeError por firma del SDK).
+# *****************************************************************************
+
+
+class _RetryableError(Exception):
+    """Error simulado reintentable (HTTP 503)."""
+
+    def __init__(self, message: str = "Simulated API failure", status_code: int = 503) -> None:
+        super().__init__(message)
+        self.status_code = status_code
+
 
 class FakeGenAIClient:
     """Fake del cliente `google.genai.Client` para tests deterministas."""
@@ -25,13 +42,12 @@ class FakeGenAIClient:
             def __init__(self, outer):
                 self._outer = outer
 
-            def embed_content(self, model: str, contents: list[str]):
+            def embed_content(self, model: str, contents: list[str], config: dict | None = None):
                 self._outer._call_count += 1
                 self._outer.last_contents = contents
 
                 if self._outer._call_count > self._outer._fail_after >= 0:
-                    from google.genai import errors
-                    raise errors.APIError("Simulated API failure")
+                    raise _RetryableError()
 
                 class FakeEmbedding:
                     def __init__(self, values: list[float]):
@@ -108,14 +124,15 @@ def test_reintento_con_backoff_exitoso(provider, monkeypatch):
                 def __init__(self, outer):
                     self._outer = outer
 
-                def embed_content(self, model: str, contents: list[str]):
+                def embed_content(
+                    self, model: str, contents: list[str], config: dict | None = None
+                ):
                     self._outer._call_count += 1
                     self._outer.last_contents = contents
 
                     if self._outer._fail_first:
                         self._outer._fail_first = False
-                        from google.genai import errors
-                        raise errors.APIError("Simulated API failure")
+                        raise _RetryableError()
 
                     class FakeEmbedding:
                         def __init__(self, values: list[float]):

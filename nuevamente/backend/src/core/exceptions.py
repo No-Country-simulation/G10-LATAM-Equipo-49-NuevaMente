@@ -84,3 +84,32 @@ class StorageError(NuevaMenteError):
 
     code = "STORAGE_ERROR"
     http_status = 502
+
+
+# *****************************************************************************
+#  MEJORA AUD-022 — 2026-10-15
+#  Se separa la taxonomía de errores: un fallo del proveedor de embeddings y un
+#  fallo del vector store dejan de degradarse a `NuevaMenteError` genérico (500)
+#  o a `StorageError`. Así el cliente recibe un código preciso y no se filtra el
+#  texto crudo del SDK como error de servidor.
+# *****************************************************************************
+class EmbeddingError(NuevaMenteError):
+    """Fallo al generar embeddings (proveedor caído, cuota, respuesta inválida).
+
+    Reemplaza el uso de `NuevaMenteError` genérico en `embeddings/embed_chunks.py`
+    (AUD-022a). Un `LLMProviderError` del proveedor se propaga sin re-envolver.
+    """
+
+    code = "EMBEDDING_ERROR"
+    http_status = 502
+
+
+class VectorStoreError(NuevaMenteError):
+    """Fallo del índice vectorial (consulta o persistencia) — AUD-022b.
+
+    Reemplaza a `StorageError` en `vectorstore/search.py` y
+    `vectorstore/store.py`: el vector store no es el almacenamiento de objetos.
+    """
+
+    code = "VECTORSTORE_ERROR"
+    http_status = 502

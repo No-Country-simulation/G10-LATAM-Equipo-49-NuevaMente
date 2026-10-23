@@ -1,12 +1,19 @@
 """Tests de `vectorstore/search.py::similarity_search` (BE-RAG-008, OUT-005).
 
 El helper delega en `store.query`, aplica el umbral `RETRIEVAL_MIN_SCORE`
-y convierte fallos del store en `StorageError`.
+y convierte fallos del store en `VectorStoreError`.
+
+*****************************************************************************
+MEJORA AUD-022b — 2026-10-15
+Un fallo del índice vectorial se reporta con el código preciso
+`VECTORSTORE_ERROR`, no como `STORAGE_ERROR` (que es del almacenamiento de
+objetos). Se ajustan los tests que esperaban `StorageError`.
+*****************************************************************************
 """
 import pytest
 
 from src.core.config import get_settings
-from src.core.exceptions import NoContextError, NuevaMenteError, StorageError
+from src.core.exceptions import NoContextError, NuevaMenteError, VectorStoreError
 from src.vectorstore.memory import InMemoryMatch, InMemoryVectorStore
 from src.vectorstore.search import similarity_search
 
@@ -106,10 +113,10 @@ def test_store_vacio_devuelve_lista_vacia():
 # -------------------------------------------------------------------- OUT-005
 
 
-def test_fallo_del_store_se_convierte_en_storage_error():
+def test_fallo_del_store_se_convierte_en_vectorstore_error():
     store = _FallaStore(RuntimeError("colección corrrupta"))
 
-    with pytest.raises(StorageError, match="búsqueda por similitud"):
+    with pytest.raises(VectorStoreError, match="búsqueda por similitud"):
         similarity_search([1.0, 0.0], store, top_k=5)
 
 
@@ -117,7 +124,7 @@ def test_fallo_del_store_conserva_la_causa():
     cause = ValueError("vector dimensión inválida")
     store = _FallaStore(cause)
 
-    with pytest.raises(StorageError) as exc_info:
+    with pytest.raises(VectorStoreError) as exc_info:
         similarity_search([1.0, 0.0], store, top_k=5)
 
     assert exc_info.value.__cause__ is cause

@@ -62,10 +62,15 @@ def test_detail_level_is_ignored_and_default_source_count_is_stable(client):
         result = client.get(f"/adapt/{job_id}").json()
         counts.append(len(result["metadatos"]["sources"]))
         assert "nivel_detalle" not in result["metadatos"]
-    # Con el filtro de umbral, solo los matches >= RETRIEVAL_MIN_SCORE
-    # llegan al output; el conteo es estable (1) independientemente del
-    # `nivel_detalle` legacy.
-    assert counts == [1, 1]
+    # *******************************************************************
+    #  MEJORA AUD-001 — 2026-10-15
+    #  La consulta de retrieval ya no es un recorte arbitrario; con el
+    #  *overview* (varios fragmentos) y el filtro de umbral pueden llegar
+    #  hasta 3 fuentes. Lo que sigue siendo invariante es que el conteo no
+    #  depende del `nivel_detalle` legacy: ambos son iguales y no vacíos.
+    # *******************************************************************
+    assert counts[0] == counts[1]
+    assert 1 <= counts[0] <= 3
 
 
 def test_same_document_can_be_adapted_with_other_profile(client):

@@ -17,9 +17,22 @@ from src.core.config import get_settings
 _LOG_FORMAT = "%(asctime)s %(levelname)-7s %(name)s | %(message)s"
 
 
+# *****************************************************************************
+#  MEJORA AUD-019 — 2026-10-15
+#  Antes un valor con "\n", "\r" o "\t" se emitía crudo y rompía el formato de
+#  una línea por evento (log injection vía nombre de archivo). Ahora cualquier
+#  carácter de control fuerza el escapado JSON del valor, de modo que un evento
+#  siempre ocupa una sola línea.
+# *****************************************************************************
+_CONTROL_CHARS = ("\r", "\n", "\t")
+
+
 def _format_value(value: Any) -> str:
     if isinstance(value, str):
-        return json.dumps(value, ensure_ascii=False) if (" " in value or not value) else value
+        needs_quoting = (
+            " " in value or not value or any(c in value for c in _CONTROL_CHARS)
+        )
+        return json.dumps(value, ensure_ascii=False) if needs_quoting else value
     return str(value)
 
 

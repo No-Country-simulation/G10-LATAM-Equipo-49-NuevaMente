@@ -1,10 +1,18 @@
-streamlit>=1.38,<2.0
-httpx>=0.27,<1.0
+#streamlit>=1.38,<2.0
+#httpx>=0.27,<1.0
 
-pypdf[crypto]>=6.12,<7.0
-reportlab>=4.0,<5.0
+#pypdf[crypto]>=6.12,<7.0
+#reportlab>=4.0,<5.0
 
-langchain-text-splitters>=0.3,<2.0
-chromadb
+#langchain-text-splitters>=0.3,<2.0
+#chromadb
 
-google-genai>=1.0,<2.0
+#google-genai>=1.0,<2.0
+# Dependencias del proyecto NuevaMente.
+#
+# MEJORA AUD-021 — 2026-10-15
+# Este archivo (raíz del repositorio) duplicaba las dependencias del backend con
+# deriva (sin `python-multipart`, `chromadb` sin versión). Para tener una única
+# fuente de verdad, delega en `backend/requirements.txt` (donde vive el código).
+-r nuevamente/backend/requirements.txt
+

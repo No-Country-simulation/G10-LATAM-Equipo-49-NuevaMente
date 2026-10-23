@@ -4,6 +4,7 @@ Persistencia en `settings.CHROMA_PERSIST_DIR`. La colección se nombra
 según proveedor de embeddings y dimensiones para evitar conflictos
 al cambiar de proveedor.
 """
+import re
 from functools import lru_cache
 from typing import Any
 
@@ -22,10 +23,21 @@ def get_chroma_client() -> Any:
 
 
 def _collection_name(settings) -> str:
-    """Nombre de colección segregado por proveedor y dimensiones."""
+    """Nombre de colección segregado por proveedor, modelo y dimensión real.
+
+    *********************************************************************
+    MEJORA AUD-012 — 2026-10-15
+    Antes era `nuevamente_{provider}_{dims}`: cambiaba al cambiar de proveedor
+    o dimensión, pero NO al cambiar de modelo de embeddings, y para el mock
+    usaba una dimensión configurada (768) distinta de la real (256). Ahora el
+    nombre incorpora proveedor + modelo + dimensión efectiva, de modo que dos
+    espacios vectoriales incompatibles nunca comparten colección.
+    *********************************************************************
+    """
     provider = settings.EMBEDDING_PROVIDER.lower()
     dims = settings.active_embedding_dimensions
-    return f"nuevamente_{provider}_{dims}"
+    model = re.sub(r"[^a-z0-9]+", "-", settings.active_embedding_model.lower()).strip("-")
+    return f"nuevamente_{provider}_{model}_{dims}"
 
 
 @lru_cache

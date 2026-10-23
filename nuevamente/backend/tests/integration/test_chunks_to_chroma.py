@@ -81,13 +81,11 @@ def test_chroma_collection_named_by_provider_and_dimensions(tmp_path):
     os.environ["EMBEDDING_DIMENSIONS"] = "256"
 
     from src.core.config import get_settings
-    from src.embeddings.factory import get_embedding_provider
     from src.vectorstore.client import _collection_name
 
     get_settings.cache_clear()
 
     settings = get_settings()
-    provider = get_embedding_provider()
 
     # El nombre de la colección debe incluir provider y dimensiones
     collection_name = _collection_name(settings)

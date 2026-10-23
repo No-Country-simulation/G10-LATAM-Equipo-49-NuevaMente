@@ -1,8 +1,13 @@
 # Auditoría de estado de implementación
 
+> **NOTA (2026-10-15, AUD-021):** este documento es una **instantánea histórica** de una fase
+> temprana. Desde entonces se implementaron el RAG, los embeddings, el vector store, la validación
+> de fidelidad y el ensamblado final, por lo que las filas marcadas aquí como "CONTRATO (pendiente)"
+> **pueden estar ya implementadas**. La fuente de verdad es el código y `backend/tests`.
+
 Generada automáticamente a partir del código (`ast`): un archivo es **IMPLEMENTADO** si contiene
 funciones con lógica real o solo modelos/constantes sin firmas vacías; es **CONTRATO (pendiente)**
-si todas sus funciones tienen cuerpo `...`. Reflejo del estado actual del repositorio.
+si todas sus funciones tienen cuerpo `...`. Reflejo del estado en el momento de generarlo.
 
 **Resumen:** 37 de 58 archivos Python implementados; el resto son contratos de Semana 2 en adelante
 (RAG, embeddings, vector store, LLM, validación de fidelidad, ensamblado final).

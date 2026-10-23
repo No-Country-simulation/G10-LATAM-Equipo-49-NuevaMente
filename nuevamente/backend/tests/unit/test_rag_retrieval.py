@@ -70,12 +70,28 @@ def test_usa_retrieval_top_k_de_la_configuracion():
 
 
 def test_query_combina_perfil_nicho_y_tema():
+    """Con `tema`, la consulta prioriza tema + nicho (AUD-001, 2026-10-15).
+
+    Antes se concatenaban perfil + nicho + tema, de modo que el texto del
+    perfil (idéntico para todos los temas) dominaba la similitud. Ahora, si
+    hay `tema`, la consulta es `tema nicho`.
+    """
     embedder = _SpyEmbedder()
     service = DefaultRetrievalService(store=_SpyStore(), embedder=embedder)
 
     service.retrieve(doc_id="doc_1", perfil="docente", nicho="ansiedad", tema="sueño")
 
-    assert embedder.queries == ["docente ansiedad sueño"]
+    assert embedder.queries == ["sueño ansiedad"]
+
+
+def test_query_sin_tema_usa_perfil_y_nicho():
+    """Sin `tema`, la consulta cae al perfil + nicho (AUD-001, 2026-10-15)."""
+    embedder = _SpyEmbedder()
+    service = DefaultRetrievalService(store=_SpyStore(), embedder=embedder)
+
+    service.retrieve(doc_id="doc_1", perfil="docente", nicho="ansiedad")
+
+    assert embedder.queries == ["docente ansiedad"]
 
 
 def test_query_omite_las_partes_nulas():
@@ -135,10 +151,10 @@ def test_retrieval_end_to_end_con_mock_y_memoria():
     assert matches[0].page == 1
 
 
-def test_fallo_del_store_se_convierte_en_storage_error():
+def test_fallo_del_store_se_convierte_en_vectorstore_error():
     """El cableado hacia similarity_search hace que un fallo del store
-    llegue como StorageError (OUT-005), no crudo."""
-    from src.core.exceptions import StorageError
+    llegue como VectorStoreError (VECTORSTORE_ERROR), no crudo (AUD-022b)."""
+    from src.core.exceptions import VectorStoreError
 
     class _BrokenStore:
         def add(self, *args, **kwargs) -> None:
@@ -151,5 +167,5 @@ def test_fallo_del_store_se_convierte_en_storage_error():
 
     import pytest
 
-    with pytest.raises(StorageError):
+    with pytest.raises(VectorStoreError):
         service.retrieve(doc_id="doc_1", perfil="docente")

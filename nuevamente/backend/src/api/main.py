@@ -7,6 +7,8 @@ Endpoints (Fase 6 del Plan Técnico): `GET /health`, `POST /ingest`,
 Todo error se devuelve como `{"error": {"code": ..., "message": ...}}`.
 """
 import json
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 
 from fastapi import BackgroundTasks, FastAPI, File, Request, UploadFile
 from fastapi.exceptions import RequestValidationError
@@ -26,17 +28,34 @@ from src.core.config import get_settings
 from src.core.exceptions import JobNotFoundError, NuevaMenteError
 from src.core.logging import configure_logging, get_logger
 from src.db.models import FINAL_STATUSES
-from src.db.session import get_job
+from src.db.session import get_job, reconcile_stale_jobs
 from src.output.schema import NuevaMenteOutput
 
 configure_logging()
 log = get_logger(__name__)
 settings = get_settings()
 
+
+# *****************************************************************************
+#  MEJORA AUD-018 — 2026-10-15
+#  Al arrancar, los jobs que quedaron `QUEUED`/`PROCESSING` de una ejecución
+#  anterior (tareas en segundo plano que mueren con el proceso) se marcan como
+#  `ERROR`, para que el cliente reciba una respuesta inmediata en vez de
+#  consultar indefinidamente.
+# *****************************************************************************
+@asynccontextmanager
+async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+    reconciliados = reconcile_stale_jobs()
+    if reconciliados:
+        log.warning("stale_jobs_reconciled", count=reconciliados)
+    yield
+
+
 app = FastAPI(
     title=f"{settings.APP_NAME} API",
     version=settings.APP_VERSION,
     description="API del MVP NuevaMente: ingesta de documentos y adaptación (mock).",
+    lifespan=lifespan,
 )
 app.add_middleware(
     CORSMiddleware,
@@ -90,7 +109,8 @@ def health() -> HealthResponse:
 def ingest_document(file: UploadFile = File(...)) -> IngestResponse:
     """RF-001. Sube PDF, Markdown o TXT (≤ MAX_FILE_SIZE_MB) y devuelve `document_id`.
 
-    Errores: 400 INVALID_FILE | SCANNED_PDF | DOCUMENT_TOO_LARGE, 502 STORAGE_ERROR.
+    Errores: 400 INVALID_FILE | SCANNED_PDF | DOCUMENT_TOO_LARGE,
+    502 STORAGE_ERROR | EMBEDDING_ERROR | VECTORSTORE_ERROR (AUD-022).
     """
     # Se lee como máximo tamaño+1 bytes: basta para detectar el exceso sin cargar todo en memoria.
     max_bytes = get_settings().MAX_FILE_SIZE_MB * 1024 * 1024
