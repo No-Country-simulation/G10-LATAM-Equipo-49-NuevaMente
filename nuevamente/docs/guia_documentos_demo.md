@@ -36,7 +36,7 @@
 
 **Verificación esperada:**
 ```bash
-curl -F "file=@documentos_prueba/atlas-pay-5p.pdf" http://127.0.0.1:8000/ingest
+curl -F "file=@documentos_demo/atlas-pay-5p.pdf" http://127.0.0.1:8000/ingest
 # → 201, page_count=5, chunk_count≈6
 ```
 
@@ -71,7 +71,7 @@ evaluación, seguridad y despliegue).
 
 **Verificación esperada:**
 ```bash
-curl -F "file=@documentos_prueba/helios-rec-10p.pdf" http://127.0.0.1:8000/ingest
+curl -F "file=@documentos_demo/helios-rec-10p.pdf" http://127.0.0.1:8000/ingest
 # → 201, page_count=10, chunk_count≈17
 ```
 
@@ -111,7 +111,7 @@ despliegue, capacidad, DR, seguridad, postmortems).
 
 **Verificación esperada:**
 ```bash
-curl -F "file=@documentos_prueba/orion-platform-13p.pdf" http://127.0.0.1:8000/ingest
+curl -F "file=@documentos_demo/orion-platform-13p.pdf" http://127.0.0.1:8000/ingest
 # → 201, page_count=13, chunk_count≈23
 ```
 
@@ -151,7 +151,7 @@ curl -F "file=@documentos_prueba/orion-platform-13p.pdf" http://127.0.0.1:8000/i
 
 ```bash
 # 1. Ingesta
-curl -F "file=@documentos_prueba/helios-rec-10p.pdf" http://127.0.0.1:8000/ingest
+curl -F "file=@documentos_demo/helios-rec-10p.pdf" http://127.0.0.1:8000/ingest
 
 # 2. Adaptación 
 curl -X POST http://127.0.0.1:8000/adapt \
