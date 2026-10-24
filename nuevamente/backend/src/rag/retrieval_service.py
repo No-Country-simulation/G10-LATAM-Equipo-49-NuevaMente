@@ -10,6 +10,16 @@ from src.vectorstore.base import VectorStore, VectorStoreMatch
 from src.vectorstore.factory import get_vectorstore
 from src.vectorstore.search import similarity_search
 
+# CAMBIO H-07 INICIO — 2026-10-24
+_FORMAT_QUERY_TERMS = {
+    "Guía Práctica Paso a Paso (Tutorial)": "tutorial",
+    "Flashcards de Memorización": "flashcards",
+    "Quiz Interactivo con Justificaciones": "quiz",
+    "Resumen Ejecutivo (TL;DR)": "resumen ejecutivo",
+    "Guion de Clase / Video": "guion",
+}
+# CAMBIO H-07 FIN — 2026-10-24
+
 
 class DefaultRetrievalService:
     """Implementación de `RetrievalService` sobre el vectorstore dado.
@@ -40,6 +50,7 @@ class DefaultRetrievalService:
         perfil: str,
         nicho: str | None = None,
         tema: str | None = None,
+        formato: str | None = None,
     ) -> list[VectorStoreMatch]:
         # *********************************************************************
         #  MEJORA AUD-001 — 2026-10-15
@@ -49,8 +60,15 @@ class DefaultRetrievalService:
         #  perfil queda como pista solo cuando NO hay tema (el perfil describe el
         #  estilo del destinatario, no el contenido a recuperar).
         # *********************************************************************
+        # CAMBIO H-07 INICIO — 2026-10-24
         settings = get_settings()
-        parts = [tema, nicho] if tema else [perfil, nicho]
+        base_query = tema or perfil
+        format_term = _FORMAT_QUERY_TERMS.get(formato or "")
+        parts = (
+            [base_query, base_query, format_term, nicho]
+            if format_term
+            else [base_query, nicho]
+        )
         query = " ".join(t for t in parts if t).strip() or "general"
         vector = self._embedder.embed_query(query)
         # similarity_search aplica el umbral de RETRIEVAL_MIN_SCORE y
@@ -58,3 +76,4 @@ class DefaultRetrievalService:
         return similarity_search(
             vector, self._store, settings.RETRIEVAL_TOP_K, doc_id=doc_id
         )
+        # CAMBIO H-07 FIN — 2026-10-24

@@ -16,6 +16,7 @@ from src.generation.models import ContenidoAdaptado
 from src.generation.profiles import FormatoSalida, NichoSector, PerfilDestinatario
 
 Status = Literal["SUCCESS", "PARTIAL", "NO_CONTEXT", "ERROR"]
+GenerationMode = Literal["llm", "mock"]
 
 
 class Source(BaseModel):
@@ -67,6 +68,9 @@ class NuevaMenteOutput(BaseModel):
     """
 
     status: Status
+    # CAMBIO H-03 INICIO — 2026-10-24
+    generation_mode: GenerationMode = "llm"
+    # CAMBIO H-03 FIN — 2026-10-24
     metadatos: Metadatos
     contenido_adaptado: ContenidoAdaptado | None = None
     evaluacion_calidad: EvaluacionCalidad

@@ -54,7 +54,9 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 app = FastAPI(
     title=f"{settings.APP_NAME} API",
     version=settings.APP_VERSION,
-    description="API del MVP NuevaMente: ingesta de documentos y adaptación (mock).",
+     # CAMBIO H-02/H-06 INICIO — 2026-10-24
+    description="API NuevaMente para ingesta de documentos y adaptación educativa.",
+    # CAMBIO H-02/H-06 FIN — 2026-10-24
     lifespan=lifespan,
 )
 app.add_middleware(

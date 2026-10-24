@@ -18,8 +18,14 @@ FORMATO: {formato}
 NICHO: {nicho}
 NIVEL: {nivel}
 
+ESTRUCTURA OBLIGATORIA PARA ESTE FORMATO:
+{estructura_formato}
+
 CONTEXTO:
 {contexto}
 
-Responde en JSON válido según el schema GeneratedContent
-(cuerpo, conceptos_clave, prerrequisitos, tiempo_estimado_min).
+Responde únicamente con JSON válido. Incluye siempre `cuerpo`,
+`conceptos_clave` (lista), `prerrequisitos` (lista) y
+`tiempo_estimado_min` (entero o null), además del campo estructurado
+indicado arriba. Mantén `cuerpo` coherente con esa estructura y usa solo
+información disponible en CONTEXTO.

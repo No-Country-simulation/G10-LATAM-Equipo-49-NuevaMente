@@ -2,18 +2,26 @@
 
 Usa `cohere` SDK v2. Llamadas con `response_format={"type": "json_object"}` para
 forzar salida JSON estructurada, reintentos con backoff exponencial, y
-traducción de errores a `LLMProviderError` para que el orquestador pueda
-hacer fallback a mock.
+traducción de errores a `LLMProviderError` para que la API marque el job
+como fallido en lugar de presentar una respuesta mock.
 
 El modelo por defecto es `command-r-plus` (alias que apunta a la última
 revisión estable). Longitud máxima de salida: `COHERE_MAX_TOKENS` (por
 defecto 4096, límite del modelo command-r-plus).
+
+CAMBIO H-08 INICIO — 2026-10-24
+La respuesta se valida contra el schema de contenido antes de salir del provider.
+CAMBIO H-08 FIN — 2026-10-24
 """
 import time
 from typing import Any
 
+from pydantic import ValidationError
+
 from src.core.config import get_settings
 from src.core.exceptions import LLMProviderError
+from src.generation.models import ContenidoAdaptado
+from src.generation.prompt_loader import strip_markdown_fences
 
 
 class CohereLLMProvider:
@@ -66,7 +74,18 @@ class CohereLLMProvider:
                         first = content_list[0]
                         text = getattr(first, "text", None)
                         if text:
+                            # CAMBIO H-08 INICIO — 2026-10-24
+                            try:
+                                ContenidoAdaptado.model_validate_json(
+                                    strip_markdown_fences(text)
+                                )
+                            except (ValidationError, ValueError) as exc:
+                                raise LLMProviderError(
+                                    "Respuesta de Cohere inválida: se esperaba JSON "
+                                    "con los campos de GeneratedContent."
+                                ) from exc
                             return text
+                            # CAMBIO H-08 FIN — 2026-10-24
                 raise LLMProviderError("Respuesta de Cohere sin contenido de texto válido")
             except Exception as exc:
                 last_exc = exc

@@ -6,7 +6,12 @@ tocar el resto del pipeline (RNF-005).
 Si `LLM_PROVIDER=cohere` y hay `GEMINI_API_KEY` configurada, se devuelve una
 cadena de failover `FailoverLLMProvider(CohereLLMProvider, GeminiLLMProvider)`:
 primero Cohere, si falla tras reintentos → Gemini, si ambos fallan → error
-que el orquestador convierte en fallback a mock (`status=PARTIAL`).
+que se propaga como error del job. El modo mock solo se activa cuando se
+configura explícitamente `LLM_PROVIDER=mock`.
+
+CAMBIO H-02 INICIO — 2026-10-24
+El fallo de los proveedores se propaga como error del job, no como contenido mock.
+CAMBIO H-02 FIN — 2026-10-24
 """
 from functools import lru_cache
 

@@ -7,14 +7,13 @@ Estado de implementación:
     - Ingesta (RF-001): COMPLETA → validar, extraer, limpiar, chunkear,
       generar embeddings, subir el original y persistir documento + chunks +
       indexar (de forma atómica, con compensación ante fallos — AUD-004).
-    - Adaptación (`/adapt`): RAG real con fallback a mock. La consulta de
-      retrieval depende de la solicitud (`tema`/nicho) — AUD-001. Si no hay
-      contexto suficiente se devuelve `status=NO_CONTEXT` como resultado de
-      negocio (AUD-002).
+    - Adaptación (`/adapt`): RAG y generación configurados explícitamente.
+      Si no hay contexto suficiente se devuelve `status=NO_CONTEXT` (AUD-002).
 """
 from datetime import UTC, datetime
 
 from src.api.schemas import AdaptRequest, IngestResponse
+from src.core.config import get_settings
 from src.core.exceptions import (
     DocumentNotFoundError,
     InvalidFileError,
@@ -233,8 +232,8 @@ class PipelineOrchestrator:
     def run_adaptation(
         self, request: AdaptRequest, job_id: str | None = None
     ) -> NuevaMenteOutput:
-        """Genera el resultado usando RAG con fallback a mock, y si hay `job_id`,
-        guarda el JSON en el almacenamiento.
+        """Genera el resultado con RAG y el proveedor configurado. En modo mock
+        explícito usa fragmentos del documento; si hay `job_id`, guarda el JSON.
 
         Lanza:
             DocumentNotFoundError: si `request.document_id` no existe.
@@ -264,6 +263,7 @@ class PipelineOrchestrator:
             perfil=request.perfil,
             nicho=request.nicho,
             tema=tema,
+            formato=request.formato,
         )
 
         try:
@@ -283,22 +283,17 @@ class PipelineOrchestrator:
                 self._store_result(output, document.storage_object_name, request, job_id)
             return output
 
-        # Generación con LLM (COMP-06) con fallback a mock.
+        # El modo mock es una opción explícita; un fallo del LLM no degrada
+        # silenciosamente la respuesta.
         gen_request = AdaptationRequest(
             document_id=request.document_id,
             perfil=request.perfil,
             formato=request.formato,
             nicho=request.nicho,
         )
-        provider = get_llm_provider()
-        is_mock = False
-        try:
-            content = GenerationOrchestrator().generate_content(
-                gen_request, contexto, provider
-            )
-        except Exception as exc:
-            log.warning("llm_generation_failed_fallback_to_mock", error=str(exc))
-            # AUD-020: se reutilizan los chunks reales (via DB), sin `_MockChunk`.
+        is_mock = get_settings().LLM_PROVIDER.lower() == "mock"
+        # CAMBIO H-02 INICIO — 2026-10-24
+        if is_mock:
             chunks_by_id = {chunk.id: chunk for chunk in chunks}
             mock_chunks = [
                 chunks_by_id[m.chunk_id] for m in matches if m.chunk_id in chunks_by_id
@@ -306,7 +301,12 @@ class PipelineOrchestrator:
             content, _used = build_mock_content(
                 request.perfil, request.formato, request.nicho, mock_chunks
             )
-            is_mock = True
+        else:
+            provider = get_llm_provider()
+            content = GenerationOrchestrator().generate_content(
+                gen_request, contexto, provider
+            )
+        # CAMBIO H-02 FIN — 2026-10-24
 
         # Paso 4: validación de fidelidad.
         validation_service = DefaultValidationService()
@@ -373,6 +373,11 @@ class PipelineOrchestrator:
         except NuevaMenteError as exc:
             log.error("job_failed", job_id=job_id, code=exc.code, error=exc.message)
             update_job_status(job_id, "ERROR", exc.message)
+        # CAMBIO H-02 INICIO — 2026-10-24
+        except Exception:
+            log.exception("job_failed_unexpectedly", job_id=job_id)
+            update_job_status(job_id, "ERROR", "Error interno al generar la adaptación.")
+        # CAMBIO H-02 FIN — 2026-10-24
         except Exception:
             log.exception("job_failed", job_id=job_id, code="INTERNAL_ERROR")
             update_job_status(job_id, "ERROR", "Error interno durante la adaptación.")

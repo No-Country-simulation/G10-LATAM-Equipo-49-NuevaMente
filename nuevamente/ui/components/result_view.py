@@ -696,19 +696,23 @@ def _render_actions(result: dict, markdown: str) -> None:
 
 def _render_quality(result: dict) -> None:
     """Renderiza información de calidad cuando existe."""
+    # CAMBIO H-03 INICIO — 2026-10-24
     quality = result.get("evaluacion_calidad") or {}
     score = quality.get("fidelidad_score")
+    generation_mode = result.get("generation_mode")
 
-    if score is None:
-        return
+    if generation_mode == "mock":
+        st.warning("Modo mock: este contenido no fue adaptado por un proveedor de IA.")
 
-    st.html(
-        f"""
-        <div class="nm-result-info">
-            <strong>Fidelidad:</strong> {score:.0%}
-        </div>
-        """
-    )
+    if score is not None:
+        st.html(
+            f"""
+            <div class="nm-result-info">
+                <strong>Fidelidad:</strong> {score:.0%}
+            </div>
+            """
+        )
+    # CAMBIO H-03 FIN — 2026-10-24
 
 
 def render() -> None:
@@ -733,7 +737,10 @@ def render() -> None:
     if status == "ERROR":
         st.error("La generación terminó con error.")
     elif status == "PARTIAL":
-        st.warning("Resultado parcial (sin validación de fidelidad).")
+        # CAMBIO H-03 INICIO — 2026-10-24
+        if result.get("generation_mode") != "mock":
+            st.warning("Resultado parcial: fidelidad por debajo del umbral o no disponible.")
+        # CAMBIO H-03 FIN — 2026-10-24
     elif status == "NO_CONTEXT":
         st.warning("No hay contexto suficiente en el documento.")
 

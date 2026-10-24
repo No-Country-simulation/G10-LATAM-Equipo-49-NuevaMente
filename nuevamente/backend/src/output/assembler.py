@@ -56,6 +56,9 @@ def assemble_output(
             observaciones.append(NO_CONTEXT_OBSERVATION)
         return NuevaMenteOutput(
             status="NO_CONTEXT",
+            # CAMBIO H-03 INICIO — 2026-10-24
+            generation_mode="llm",
+            # CAMBIO H-03 FIN — 2026-10-24
             metadatos=metadatos,
             contenido_adaptado=None,
             evaluacion_calidad=EvaluacionCalidad(
@@ -75,6 +78,9 @@ def assemble_output(
 
     return NuevaMenteOutput(
         status=status,
+        # CAMBIO H-03 INICIO — 2026-10-24
+        generation_mode="mock" if es_mock else "llm",
+        # CAMBIO H-03 FIN — 2026-10-24
         metadatos=metadatos,
         contenido_adaptado=contenido,
         evaluacion_calidad=EvaluacionCalidad(

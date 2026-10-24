@@ -67,20 +67,50 @@ def build_generation_prompt(
     devuelve (system_prompt, user_prompt).
 
     Variables disponibles en el template:
-        {contexto}, {perfil}, {formato}, {nicho}, {nivel}
+        {contexto}, {perfil}, {formato}, {nicho}, {nivel},
+        {estructura_formato}
     """
+    # CAMBIO H-04 INICIO — 2026-10-24
     raw = load_prompt("generacion_v1.txt")
     system_prompt, user_template = parse_generation_prompt(raw)
 
+    format_structures = {
+        "Guía Práctica Paso a Paso (Tutorial)": (
+            "Incluye una lista no vacía `pasos`; cada paso tiene `numero`, "
+            "`titulo` y `descripcion`."
+        ),
+        "Flashcards de Memorización": (
+            "Incluye una lista no vacía `tarjetas`; cada tarjeta tiene "
+            "`frente` y `dorso`."
+        ),
+        "Quiz Interactivo con Justificaciones": (
+            "Incluye una lista no vacía `preguntas`; cada pregunta tiene "
+            "`pregunta`, `opciones` (lista), `respuesta_correcta` y "
+            "`justificacion`."
+        ),
+        "Resumen Ejecutivo (TL;DR)": (
+            "Incluye el campo no vacío `resumen_ejecutivo`."
+        ),
+        "Guion de Clase / Video": (
+            "Incluye una lista no vacía `escenas`; cada escena tiene "
+            "`numero`, `titulo`, `contenido` y `minuto` (puede ser null)."
+        ),
+    }
+    format_values = {
+        "perfil": perfil,
+        "formato": formato,
+        "nicho": nicho,
+        "nivel": nivel,
+        "estructura_formato": format_structures[formato],
+    }
+    system_prompt = system_prompt.format(**format_values)
     user_prompt = user_template.format(
         contexto=contexto,
-        perfil=perfil,
-        formato=formato,
-        nicho=nicho,
-        nivel=nivel,
+        **format_values,
     )
 
     return system_prompt, user_prompt
+    # CAMBIO H-04 FIN — 2026-10-24
 
 
 def strip_markdown_fences(text: str) -> str:
