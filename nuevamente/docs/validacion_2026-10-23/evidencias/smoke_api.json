@@ -1,0 +1,73 @@
+[
+  {
+    "paso": "GET /health",
+    "http": 200,
+    "body": {
+      "status": "ok"
+    }
+  },
+  {
+    "paso": "POST /ingest (orion-platform-13p.pdf)",
+    "http": 201,
+    "body": {
+      "document_id": "doc_035e5730b592",
+      "file_type": "pdf",
+      "status": "INGESTED",
+      "filename": "orion-platform-13p.pdf",
+      "size_bytes": 23670,
+      "page_count": 13,
+      "char_count": 11649,
+      "chunk_count": 23,
+      "storage_object_name": "originals/doc_035e5730b592/20261024T005023Z_orion-platform-13p.pdf",
+      "warnings": []
+    }
+  },
+  {
+    "paso": "POST /adapt (válido)",
+    "http": 202,
+    "body": {
+      "job_id": "job_e0dad2b49074",
+      "status": "PROCESSING"
+    }
+  },
+  {
+    "paso": "GET /adapt/{job_id} (resultado)",
+    "http": 500,
+    "body": {
+      "error": {
+        "code": "INTERNAL_ERROR",
+        "message": "Error interno durante la adaptación."
+      }
+    }
+  },
+  {
+    "paso": "GET /adapt/job_inexistente",
+    "http": 404,
+    "body": {
+      "error": {
+        "code": "JOB_NOT_FOUND",
+        "message": "No existe un job con ese job_id"
+      }
+    }
+  },
+  {
+    "paso": "POST /adapt (documento inexistente)",
+    "http": 404,
+    "body": {
+      "error": {
+        "code": "DOCUMENT_NOT_FOUND",
+        "message": "No existe un documento indexado con ese document_id"
+      }
+    }
+  },
+  {
+    "paso": "POST /adapt (perfil inválido)",
+    "http": 422,
+    "body": {
+      "error": {
+        "code": "INVALID_REQUEST",
+        "message": "Solicitud inválida — body.perfil: Input should be 'Principiante / Transición de Carrera', 'Desarrollador Junior / Semi Senior', 'Líder Técnico / Arquitecto' or 'Gestor / Ejecutivo (No Técnico)'; body.formato: Input should be 'Guía Práctica Paso a Paso (Tutorial)', 'Flashcards de Memorización', 'Quiz Interactivo con Justificaciones', 'Resumen Ejecutivo (TL;DR)' or 'Guion de Clase / Video'"
+      }
+    }
+  }
+]

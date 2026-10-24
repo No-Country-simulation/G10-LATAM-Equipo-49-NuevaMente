@@ -1,0 +1,402 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="8" skipped="1" tests="290" time="27.979" timestamp="2026-10-23T18:47:51.506395-06:00" hostname="DESKTOP-T87K167"><testcase classname="tests.audit.test_audit_api" name="test_aud_002_api_no_context_responde_200_con_status_no_context" time="0.292" /><testcase classname="tests.audit.test_audit_api" name="test_ok_api_rechaza_docx_con_400" time="0.025" /><testcase classname="tests.audit.test_audit_contracts" name="test_aud_005_toda_dependencia_importada_esta_declarada" time="0.258" /><testcase classname="tests.audit.test_audit_contracts" name="test_aud_006_python_multipart_esta_declarado_si_hay_subida_de_archivos" time="0.008" /><testcase classname="tests.audit.test_audit_contracts" name="test_aud_015_la_ui_solo_ofrece_formatos_que_el_backend_acepta" time="0.006" /><testcase classname="tests.audit.test_audit_contracts" name="test_aud_016_ruff_no_reporta_errores" time="0.010"><skipped type="pytest.skip" message="ruff no está instalado (pip install -r requirements-dev.txt)">C:\alura\oci\Nueva-cont\G10\nuevamente\backend\tests\audit\test_audit_contracts.py:81: ruff no está instalado (pip install -r requirements-dev.txt)</skipped></testcase><testcase classname="tests.audit.test_audit_contracts" name="test_aud_019_un_evento_de_log_ocupa_una_sola_linea" time="0.005" /><testcase classname="tests.audit.test_audit_contracts" name="test_ok_el_backend_rechaza_formatos_no_soportados[informe.docx]" time="0.005" /><testcase classname="tests.audit.test_audit_contracts" name="test_ok_el_backend_rechaza_formatos_no_soportados[datos.exe]" time="0.005" /><testcase classname="tests.audit.test_audit_contracts" name="test_ok_el_backend_rechaza_formatos_no_soportados[sinextension]" time="0.006" /><testcase classname="tests.audit.test_audit_contracts" name="test_ok_el_backend_rechaza_formatos_no_soportados[]" time="0.006" /><testcase classname="tests.audit.test_audit_contracts" name="test_ok_el_storage_mock_bloquea_path_traversal" time="0.007" /><testcase classname="tests.audit.test_audit_providers" name="test_aud_003_los_modelos_por_defecto_no_estan_dados_de_baja" time="0.008" /><testcase classname="tests.audit.test_audit_providers" name="test_aud_011_un_error_de_autenticacion_no_se_reintenta" time="0.009" /><testcase classname="tests.audit.test_audit_providers" name="test_aud_011_el_timeout_configurado_llega_al_cliente" time="0.017" /><testcase classname="tests.audit.test_audit_providers" name="test_aud_011_la_llamada_declara_task_type_y_dimensiones" time="0.009" /><testcase classname="tests.audit.test_audit_providers" name="test_aud_012_la_coleccion_refleja_la_dimension_real_del_proveedor" time="0.009" /><testcase classname="tests.audit.test_audit_providers" name="test_aud_012_cambiar_de_modelo_de_embeddings_cambia_la_coleccion" time="0.012" /><testcase classname="tests.audit.test_audit_providers" name="test_aud_013_el_indice_conserva_posicion_y_seccion" time="0.010" /><testcase classname="tests.audit.test_audit_providers" name="test_aud_014_el_store_rechaza_longitudes_inconsistentes" time="0.005" /><testcase classname="tests.audit.test_audit_providers" name="test_aud_014_embed_chunks_valida_un_vector_por_chunk" time="0.006" /><testcase classname="tests.audit.test_audit_providers" name="test_aud_022_embed_chunks_conserva_el_tipo_de_error_del_proveedor" time="0.006" /><testcase classname="tests.audit.test_audit_providers" name="test_aud_022_un_fallo_del_vector_store_no_se_reporta_como_storage_error" time="0.005" /><testcase classname="tests.audit.test_audit_rag" name="test_aud_001_el_tema_pedido_orienta_las_fuentes" time="0.071"><failure message="AttributeError: 'NoneType' object has no attribute 'cuerpo'">def test_aud_001_el_tema_pedido_orienta_las_fuentes():
+        """Dos temas distintos deben recuperar fuentes distintas (REQ-08: top-k según la solicitud)."""
+        orc, doc_id = ingest_cloud_doc()
+&gt;       redes = adapt(orc, doc_id, tema="balanceador de carga y redes")
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests\audit\test_audit_rag.py:29: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+tests\audit\_support.py:25: in adapt
+    return orc.run_adaptation(AdaptRequest(**data))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;src.api.orchestrator.PipelineOrchestrator object at 0x0000018C3416D220&gt;
+request = AdaptRequest(document_id='doc_d22d170d7d6d', perfil='Principiante / Transición de Carrera', formato='Resumen Ejecutivo (TL;DR)', nicho='General', tema='balanceador de carga y redes')
+job_id = None
+
+    def run_adaptation(
+        self, request: AdaptRequest, job_id: str | None = None
+    ) -&gt; NuevaMenteOutput:
+        """Genera el resultado usando RAG con fallback a mock, y si hay `job_id`,
+        guarda el JSON en el almacenamiento.
+    
+        Lanza:
+            DocumentNotFoundError: si `request.document_id` no existe.
+            NoContextError: si el documento no tiene fragmentos persistidos
+                (fallo técnico); si el retrieval no encuentra contexto
+                suficiente se devuelve `status=NO_CONTEXT` como resultado de
+                negocio (RF-009, AUD-002).
+        """
+        document = get_document(request.document_id)
+        if document is None:
+            raise DocumentNotFoundError(
+                "No existe un documento indexado con ese document_id"
+            )
+        chunks = get_chunks(request.document_id)
+        if not chunks:
+            raise NoContextError("El documento no tiene fragmentos disponibles.")
+    
+        store = get_vectorstore()
+        if store.count(doc_id=request.document_id) == 0:
+            self._ensure_indexed(request.document_id, chunks, store)
+    
+        retrieval_service = self.retrieval or DefaultRetrievalService()
+        # AUD-001: la consulta depende de la solicitud (tema). Sin tema, overview.
+        tema = request.tema or self._overview_query(chunks)
+        matches = retrieval_service.retrieve(
+            doc_id=request.document_id,
+            perfil=request.perfil,
+            nicho=request.nicho,
+            tema=tema,
+        )
+    
+        try:
+            contexto = build_context(matches)
+        except NoContextError:
+            # AUD-002: NO_CONTEXT es un resultado de negocio (HTTP 200), no un 500.
+            output = assemble_output(
+                doc_id=request.document_id,
+                perfil=request.perfil,
+                formato=request.formato,
+                nicho=request.nicho,
+                contenido=None,
+                fidelidad=FidelityEvaluation(score=None),
+                sources=[],
+            )
+            if job_id is not None:
+                self._store_result(output, document.storage_object_name, request, job_id)
+            return output
+    
+        # Generación con LLM (COMP-06) con fallback a mock.
+        gen_request = AdaptationRequest(
+            document_id=request.document_id,
+            perfil=request.perfil,
+            formato=request.formato,
+            nicho=request.nicho,
+        )
+        provider = get_llm_provider()
+        is_mock = False
+        try:
+            content = GenerationOrchestrator().generate_content(
+                gen_request, contexto, provider
+            )
+        except Exception as exc:
+            log.warning("llm_generation_failed_fallback_to_mock", error=str(exc))
+            # AUD-020: se reutilizan los chunks reales (via DB), sin `_MockChunk`.
+            chunks_by_id = {chunk.id: chunk for chunk in chunks}
+            mock_chunks = [
+                chunks_by_id[m.chunk_id] for m in matches if m.chunk_id in chunks_by_id
+            ][:3]
+            content, _used = build_mock_content(
+                request.perfil, request.formato, request.nicho, mock_chunks
+            )
+            is_mock = True
+    
+        # Paso 4: validación de fidelidad.
+        validation_service = DefaultValidationService()
+&gt;       fidelity_eval = validation_service.validate(content.cuerpo, contexto)
+                                                    ^^^^^^^^^^^^^^
+E       AttributeError: 'NoneType' object has no attribute 'cuerpo'
+
+src\api\orchestrator.py:313: AttributeError</failure></testcase><testcase classname="tests.audit.test_audit_rag" name="test_aud_002_no_context_es_un_resultado_de_negocio_no_un_error" time="0.118" /><testcase classname="tests.audit.test_audit_rag" name="test_aud_010_una_consulta_ajena_al_documento_no_se_acepta_como_contexto" time="0.058" /><testcase classname="tests.audit.test_audit_rag" name="test_aud_004_una_ingesta_fallida_no_deja_estado_parcial" time="0.014" /><testcase classname="tests.audit.test_audit_rag" name="test_aud_007_un_reinicio_no_degrada_el_resultado_en_silencio" time="0.068"><failure message="AttributeError: 'NoneType' object has no attribute 'cuerpo'">def test_aud_007_un_reinicio_no_degrada_el_resultado_en_silencio():
+        orc, doc_id = ingest_cloud_doc()
+        get_vectorstore.cache_clear()  # equivale a reiniciar el proceso con el store en memoria
+        try:
+&gt;           salida = adapt(orc, doc_id)
+                     ^^^^^^^^^^^^^^^^^^
+
+tests\audit\test_audit_rag.py:99: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+tests\audit\_support.py:25: in adapt
+    return orc.run_adaptation(AdaptRequest(**data))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;src.api.orchestrator.PipelineOrchestrator object at 0x0000018C3416CCB0&gt;
+request = AdaptRequest(document_id='doc_a9f20974f0c3', perfil='Principiante / Transición de Carrera', formato='Resumen Ejecutivo (TL;DR)', nicho='General', tema=None)
+job_id = None
+
+    def run_adaptation(
+        self, request: AdaptRequest, job_id: str | None = None
+    ) -&gt; NuevaMenteOutput:
+        """Genera el resultado usando RAG con fallback a mock, y si hay `job_id`,
+        guarda el JSON en el almacenamiento.
+    
+        Lanza:
+            DocumentNotFoundError: si `request.document_id` no existe.
+            NoContextError: si el documento no tiene fragmentos persistidos
+                (fallo técnico); si el retrieval no encuentra contexto
+                suficiente se devuelve `status=NO_CONTEXT` como resultado de
+                negocio (RF-009, AUD-002).
+        """
+        document = get_document(request.document_id)
+        if document is None:
+            raise DocumentNotFoundError(
+                "No existe un documento indexado con ese document_id"
+            )
+        chunks = get_chunks(request.document_id)
+        if not chunks:
+            raise NoContextError("El documento no tiene fragmentos disponibles.")
+    
+        store = get_vectorstore()
+        if store.count(doc_id=request.document_id) == 0:
+            self._ensure_indexed(request.document_id, chunks, store)
+    
+        retrieval_service = self.retrieval or DefaultRetrievalService()
+        # AUD-001: la consulta depende de la solicitud (tema). Sin tema, overview.
+        tema = request.tema or self._overview_query(chunks)
+        matches = retrieval_service.retrieve(
+            doc_id=request.document_id,
+            perfil=request.perfil,
+            nicho=request.nicho,
+            tema=tema,
+        )
+    
+        try:
+            contexto = build_context(matches)
+        except NoContextError:
+            # AUD-002: NO_CONTEXT es un resultado de negocio (HTTP 200), no un 500.
+            output = assemble_output(
+                doc_id=request.document_id,
+                perfil=request.perfil,
+                formato=request.formato,
+                nicho=request.nicho,
+                contenido=None,
+                fidelidad=FidelityEvaluation(score=None),
+                sources=[],
+            )
+            if job_id is not None:
+                self._store_result(output, document.storage_object_name, request, job_id)
+            return output
+    
+        # Generación con LLM (COMP-06) con fallback a mock.
+        gen_request = AdaptationRequest(
+            document_id=request.document_id,
+            perfil=request.perfil,
+            formato=request.formato,
+            nicho=request.nicho,
+        )
+        provider = get_llm_provider()
+        is_mock = False
+        try:
+            content = GenerationOrchestrator().generate_content(
+                gen_request, contexto, provider
+            )
+        except Exception as exc:
+            log.warning("llm_generation_failed_fallback_to_mock", error=str(exc))
+            # AUD-020: se reutilizan los chunks reales (via DB), sin `_MockChunk`.
+            chunks_by_id = {chunk.id: chunk for chunk in chunks}
+            mock_chunks = [
+                chunks_by_id[m.chunk_id] for m in matches if m.chunk_id in chunks_by_id
+            ][:3]
+            content, _used = build_mock_content(
+                request.perfil, request.formato, request.nicho, mock_chunks
+            )
+            is_mock = True
+    
+        # Paso 4: validación de fidelidad.
+        validation_service = DefaultValidationService()
+&gt;       fidelity_eval = validation_service.validate(content.cuerpo, contexto)
+                                                    ^^^^^^^^^^^^^^
+E       AttributeError: 'NoneType' object has no attribute 'cuerpo'
+
+src\api\orchestrator.py:313: AttributeError</failure></testcase><testcase classname="tests.audit.test_audit_rag" name="test_aud_008_el_store_en_memoria_es_seguro_entre_hilos" time="5.176" /><testcase classname="tests.audit.test_audit_rag" name="test_aud_009_las_plantillas_no_cuentan_como_afirmaciones_no_soportadas" time="0.082"><failure message="AttributeError: 'NoneType' object has no attribute 'cuerpo'">def test_aud_009_las_plantillas_no_cuentan_como_afirmaciones_no_soportadas():
+        orc, doc_id = ingest_cloud_doc()
+&gt;       salida = adapt(orc, doc_id)
+                 ^^^^^^^^^^^^^^^^^^
+
+tests\audit\test_audit_rag.py:143: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+tests\audit\_support.py:25: in adapt
+    return orc.run_adaptation(AdaptRequest(**data))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _
+
+self = &lt;src.api.orchestrator.PipelineOrchestrator object at 0x0000018C345979B0&gt;
+request = AdaptRequest(document_id='doc_25b4cbb17b15', perfil='Principiante / Transición de Carrera', formato='Resumen Ejecutivo (TL;DR)', nicho='General', tema=None)
+job_id = None
+
+    def run_adaptation(
+        self, request: AdaptRequest, job_id: str | None = None
+    ) -&gt; NuevaMenteOutput:
+        """Genera el resultado usando RAG con fallback a mock, y si hay `job_id`,
+        guarda el JSON en el almacenamiento.
+    
+        Lanza:
+            DocumentNotFoundError: si `request.document_id` no existe.
+            NoContextError: si el documento no tiene fragmentos persistidos
+                (fallo técnico); si el retrieval no encuentra contexto
+                suficiente se devuelve `status=NO_CONTEXT` como resultado de
+                negocio (RF-009, AUD-002).
+        """
+        document = get_document(request.document_id)
+        if document is None:
+            raise DocumentNotFoundError(
+                "No existe un documento indexado con ese document_id"
+            )
+        chunks = get_chunks(request.document_id)
+        if not chunks:
+            raise NoContextError("El documento no tiene fragmentos disponibles.")
+    
+        store = get_vectorstore()
+        if store.count(doc_id=request.document_id) == 0:
+            self._ensure_indexed(request.document_id, chunks, store)
+    
+        retrieval_service = self.retrieval or DefaultRetrievalService()
+        # AUD-001: la consulta depende de la solicitud (tema). Sin tema, overview.
+        tema = request.tema or self._overview_query(chunks)
+        matches = retrieval_service.retrieve(
+            doc_id=request.document_id,
+            perfil=request.perfil,
+            nicho=request.nicho,
+            tema=tema,
+        )
+    
+        try:
+            contexto = build_context(matches)
+        except NoContextError:
+            # AUD-002: NO_CONTEXT es un resultado de negocio (HTTP 200), no un 500.
+            output = assemble_output(
+                doc_id=request.document_id,
+                perfil=request.perfil,
+                formato=request.formato,
+                nicho=request.nicho,
+                contenido=None,
+                fidelidad=FidelityEvaluation(score=None),
+                sources=[],
+            )
+            if job_id is not None:
+                self._store_result(output, document.storage_object_name, request, job_id)
+            return output
+    
+        # Generación con LLM (COMP-06) con fallback a mock.
+        gen_request = AdaptationRequest(
+            document_id=request.document_id,
+            perfil=request.perfil,
+            formato=request.formato,
+            nicho=request.nicho,
+        )
+        provider = get_llm_provider()
+        is_mock = False
+        try:
+            content = GenerationOrchestrator().generate_content(
+                gen_request, contexto, provider
+            )
+        except Exception as exc:
+            log.warning("llm_generation_failed_fallback_to_mock", error=str(exc))
+            # AUD-020: se reutilizan los chunks reales (via DB), sin `_MockChunk`.
+            chunks_by_id = {chunk.id: chunk for chunk in chunks}
+            mock_chunks = [
+                chunks_by_id[m.chunk_id] for m in matches if m.chunk_id in chunks_by_id
+            ][:3]
+            content, _used = build_mock_content(
+                request.perfil, request.formato, request.nicho, mock_chunks
+            )
+            is_mock = True
+    
+        # Paso 4: validación de fidelidad.
+        validation_service = DefaultValidationService()
+&gt;       fidelity_eval = validation_service.validate(content.cuerpo, contexto)
+                                                    ^^^^^^^^^^^^^^
+E       AttributeError: 'NoneType' object has no attribute 'cuerpo'
+
+src\api\orchestrator.py:313: AttributeError</failure></testcase><testcase classname="tests.audit.test_audit_rag" name="test_ok_los_offsets_de_los_chunks_son_exactos" time="0.011" /><testcase classname="tests.audit.test_audit_rag" name="test_ok_el_umbral_se_aplica_en_similarity_search" time="0.009" /><testcase classname="tests.integration.test_api_ingest" name="test_health" time="0.020" /><testcase classname="tests.integration.test_api_ingest" name="test_ingest_txt_returns_201_and_stores_original" time="0.120" /><testcase classname="tests.integration.test_api_ingest" name="test_ingest_markdown" time="0.079" /><testcase classname="tests.integration.test_api_ingest" name="test_ingest_pdf_reports_pages" time="0.077" /><testcase classname="tests.integration.test_api_ingest" name="test_ingest_pdf_with_blank_page_returns_warning" time="0.088" /><testcase classname="tests.integration.test_api_ingest" name="test_ingest_text_in_windows_1252" time="0.108" /><testcase classname="tests.integration.test_api_ingest" name="test_unsupported_extension_is_400_invalid_file" time="0.025" /><testcase classname="tests.integration.test_api_ingest" name="test_empty_file_is_400" time="0.025" /><testcase classname="tests.integration.test_api_ingest" name="test_file_over_limit_is_400_with_explicit_message" time="0.036" /><testcase classname="tests.integration.test_api_ingest" name="test_scanned_pdf_is_400_scanned_pdf" time="0.030" /><testcase classname="tests.integration.test_api_ingest" name="test_corrupt_and_fake_pdfs_are_400" time="0.038" /><testcase classname="tests.integration.test_api_ingest" name="test_password_protected_pdf_is_400_with_clear_message" time="0.036" /><testcase classname="tests.integration.test_api_ingest" name="test_missing_file_field_is_422_invalid_request" time="0.018" /><testcase classname="tests.integration.test_api_ingest" name="test_failed_ingest_leaves_nothing_stored" time="0.036" /><testcase classname="tests.integration.test_chunks_to_chroma" name="test_chunks_to_embeddings_to_chroma_persists_and_searches" time="0.013" /><testcase classname="tests.integration.test_chunks_to_chroma" name="test_chroma_collection_named_by_provider_and_dimensions" time="0.015" /><testcase classname="tests.integration.test_chunks_to_chroma" name="test_chunks_with_different_providers_use_separate_collections" time="0.024" /><testcase classname="tests.integration.test_llm_fallback_to_mock" name="test_full_flow_fallback_to_mock_when_llm_fails" time="0.288"><failure message="assert 500 == 200&#10; +  where 500 = &lt;Response [500 Internal Server Error]&gt;.status_code">def test_full_flow_fallback_to_mock_when_llm_fails():
+        """Pipeline completo con LLM fallando → status=PARTIAL y MOCK_NOTICE."""
+        client = TestClient(app)
+    
+        # 1. Ingestar un documento
+        content = b"Texto del documento de prueba para ingestar."
+        response = client.post("/ingest", files={"file": ("test.txt", content, "text/plain")})
+        assert response.status_code == 201
+        doc_id = response.json()["document_id"]
+    
+        # 2. Pedir adaptación (el LLM fallará porque no hay API real, caerá a mock)
+        response = client.post(
+            "/adapt",
+            json={
+                "document_id": doc_id,
+                "perfil": "Principiante / Transición de Carrera",
+                "formato": "Guía Práctica Paso a Paso (Tutorial)",
+                "nicho": "Fintech",
+                "nivel_detalle": "estandar",
+            },
+        )
+        assert response.status_code == 202
+        job_id = response.json()["job_id"]
+    
+        # 3. Polling hasta que termine
+        import time
+        for _ in range(20):
+            time.sleep(0.1)
+            status_resp = client.get(f"/adapt/{job_id}")
+            if status_resp.status_code != 202:
+                break
+        else:
+            pytest.fail("Job no terminó a tiempo")
+    
+        # 4. Verificar que terminó con PARTIAL y MOCK_NOTICE
+&gt;       assert status_resp.status_code == 200
+E       assert 500 == 200
+E        +  where 500 = &lt;Response [500 Internal Server Error]&gt;.status_code
+
+tests\integration\test_llm_fallback_to_mock.py:57: AssertionError</failure></testcase><testcase classname="tests.integration.test_no_context_propagation" name="test_execute_job_sets_no_context_status_when_retrieval_empty" time="0.098" /><testcase classname="tests.integration.test_no_context_propagation" name="test_execute_job_sets_error_status_for_other_errors" time="0.071" /><testcase classname="tests.integration.test_no_context_propagation" name="test_no_context_error_caught_before_generic_error" time="0.008" /><testcase classname="tests.integration.test_pipeline_e2e" name="test_full_flow_returns_valid_partial_output" time="0.213"><failure message="assert 500 == 200&#10; +  where 500 = &lt;Response [500 Internal Server Error]&gt;.status_code">client = &lt;starlette.testclient.TestClient object at 0x0000018C34211580&gt;
+storage_dir = WindowsPath('C:/Users/Latitude 5480/AppData/Local/Temp/pytest-of-Latitude 5480/pytest-18/test_full_flow_returns_valid_p0/storage')
+
+    def test_full_flow_returns_valid_partial_output(client, storage_dir):
+        document = _ingest(client)
+    
+        accepted = _adapt(client, document["document_id"], nicho="Fintech")
+        assert accepted.status_code == 202
+        assert accepted.json()["status"] == "PROCESSING"
+        job_id = accepted.json()["job_id"]
+    
+        result = client.get(f"/adapt/{job_id}")
+&gt;       assert result.status_code == 200
+E       assert 500 == 200
+E        +  where 500 = &lt;Response [500 Internal Server Error]&gt;.status_code
+
+tests\integration\test_pipeline_e2e.py:33: AssertionError</failure></testcase><testcase classname="tests.integration.test_pipeline_e2e" name="test_detail_level_is_ignored_and_default_source_count_is_stable" time="0.252"><failure message="KeyError: 'metadatos'">client = &lt;starlette.testclient.TestClient object at 0x0000018C342111C0&gt;
+
+    def test_detail_level_is_ignored_and_default_source_count_is_stable(client):
+        document_id = _ingest(client)["document_id"]
+        counts = []
+        for legacy_level in ("breve", "profundo"):
+            job_id = _adapt(client, document_id, nivel_detalle=legacy_level).json()["job_id"]
+            result = client.get(f"/adapt/{job_id}").json()
+&gt;           counts.append(len(result["metadatos"]["sources"]))
+                              ^^^^^^^^^^^^^^^^^^^
+E           KeyError: 'metadatos'
+
+tests\integration\test_pipeline_e2e.py:63: KeyError</failure></testcase><testcase classname="tests.integration.test_pipeline_e2e" name="test_same_document_can_be_adapted_with_other_profile" time="0.246"><failure message="KeyError: 'metadatos'">client = &lt;starlette.testclient.TestClient object at 0x0000018C34289520&gt;
+
+    def test_same_document_can_be_adapted_with_other_profile(client):
+        document_id = _ingest(client)["document_id"]
+        first = _adapt(client, document_id).json()["job_id"]
+        second = _adapt(
+            client,
+            document_id,
+            perfil="Gestor / Ejecutivo (No Técnico)",
+            formato="Resumen Ejecutivo (TL;DR)",
+            nicho="Salud",
+        )
+        second_id = second.json()["job_id"]
+    
+        assert first != second_id
+        first_result = client.get(f"/adapt/{first}").json()
+        second_result = client.get(f"/adapt/{second_id}").json()
+&gt;       assert second_result["metadatos"]["perfil"] == "Gestor / Ejecutivo (No Técnico)"
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       KeyError: 'metadatos'
+
+tests\integration\test_pipeline_e2e.py:91: KeyError</failure></testcase><testcase classname="tests.integration.test_pipeline_e2e" name="test_niche_defaults_to_general" time="0.255"><failure message="KeyError: 'metadatos'">client = &lt;starlette.testclient.TestClient object at 0x0000018C34288890&gt;
+
+    def test_niche_defaults_to_general(client):
+        document_id = _ingest(client)["document_id"]
+        job_id = _adapt(client, document_id).json()["job_id"]
+        result = client.get(f"/adapt/{job_id}").json()
+&gt;       assert result["metadatos"]["nicho"] == "General"
+               ^^^^^^^^^^^^^^^^^^^
+E       KeyError: 'metadatos'
+
+tests\integration\test_pipeline_e2e.py:101: KeyError</failure></testcase><testcase classname="tests.integration.test_pipeline_e2e" name="test_unknown_document_is_404" time="0.097" /><testcase classname="tests.integration.test_pipeline_e2e" name="test_invalid_options_are_422" time="0.164" /><testcase classname="tests.integration.test_pipeline_e2e" name="test_missing_fields_are_422" time="0.020" /><testcase classname="tests.integration.test_pipeline_e2e" name="test_unknown_job_is_404" time="0.075" /><testcase classname="tests.integration.test_pipeline_e2e" name="test_pending_job_returns_202" time="0.118" /><testcase classname="tests.integration.test_pipeline_e2e" name="test_failed_job_returns_500_with_error_payload" time="0.135" /><testcase classname="tests.unit.test_claims_extractor" name="test_extrae_oraciones_con_contenido" time="0.019" /><testcase classname="tests.unit.test_claims_extractor" name="test_descarta_titulos_y_lineas_cortas" time="0.012" /><testcase classname="tests.unit.test_claims_extractor" name="test_trunca_en_400_caracteres" time="0.008" /><testcase classname="tests.unit.test_claims_extractor" name="test_texto_vacio_o_none_devuelve_lista_vacia" time="0.008" /><testcase classname="tests.unit.test_claims_extractor" name="test_ignora_oraciones_sin_minusculas" time="0.008" /><testcase classname="tests.unit.test_claims_extractor" name="test_devuelve_objetos_claim" time="0.008" /><testcase classname="tests.unit.test_db" name="test_document_roundtrip_with_chunks" time="0.058" /><testcase classname="tests.unit.test_db" name="test_unknown_document_and_chunks" time="0.054" /><testcase classname="tests.unit.test_db" name="test_chunks_are_isolated_per_document" time="0.086" /><testcase classname="tests.unit.test_db" name="test_save_document_is_atomic_on_duplicates" time="0.077" /><testcase classname="tests.unit.test_db" name="test_job_lifecycle" time="0.100" /><testcase classname="tests.unit.test_db" name="test_job_error_and_unknown_job" time="0.081" /><testcase classname="tests.unit.test_embed_chunks" name="test_embed_chunks_returns_one_vector_per_chunk" time="0.012" /><testcase classname="tests.unit.test_embed_chunks" name="test_embed_chunks_preserves_order" time="0.011" /><testcase classname="tests.unit.test_embed_chunks" name="test_embed_chunks_empty_list" time="0.009" /><testcase classname="tests.unit.test_embed_chunks" name="test_embed_chunks_propagates_provider_error" time="0.008" /><testcase classname="tests.unit.test_embed_chunks" name="test_embed_chunks_single_chunk" time="0.008" /><testcase classname="tests.unit.test_embeddings_cohere" name="test_embed_documents_returns_one_vector_per_text" time="0.008" /><testcase classname="tests.unit.test_embeddings_cohere" name="test_embed_documents_batching_respects_limit" time="0.010" /><testcase classname="tests.unit.test_embeddings_cohere" name="test_embed_documents_empty_list" time="0.007" /><testcase classname="tests.unit.test_embeddings_cohere" name="test_embed_documents_uses_search_document" time="0.007" /><testcase classname="tests.unit.test_embeddings_cohere" name="test_embed_query_uses_search_query" time="0.007" /><testcase classname="tests.unit.test_embeddings_cohere" name="test_embed_documents_propagates_error_after_retries" time="1.009" /><testcase classname="tests.unit.test_embeddings_cohere" name="test_embed_documents_respects_model_and_params" time="0.021" /><testcase classname="tests.unit.test_embeddings_gemini" name="test_embed_documents_conserva_orden_y_longitud" time="0.016" /><testcase classname="tests.unit.test_embeddings_gemini" name="test_embed_query_delega_en_embed_documents" time="0.012" /><testcase classname="tests.unit.test_embeddings_gemini" name="test_lotes_de_100_textos" time="0.013" /><testcase classname="tests.unit.test_embeddings_gemini" name="test_reintento_con_backoff_exitoso" time="1.012" /><testcase classname="tests.unit.test_embeddings_gemini" name="test_reintento_agotado_lanza_llmprovidererror" time="1.022" /><testcase classname="tests.unit.test_embeddings_gemini" name="test_lista_vacia_devuelve_lista_vacia" time="0.021" /><testcase classname="tests.unit.test_embeddings_gemini" name="test_factory_devuelve_gemini" time="0.020" /><testcase classname="tests.unit.test_embeddings_mock" name="test_mismo_texto_mismo_vector" time="0.011" /><testcase classname="tests.unit.test_embeddings_mock" name="test_embed_documents_conserva_el_orden" time="0.010" /><testcase classname="tests.unit.test_embeddings_mock" name="test_token_conserva_indice_sin_importar_el_orden" time="0.009" /><testcase classname="tests.unit.test_embeddings_mock" name="test_embedding_de_texto_largo_va_a_otras_dimensiones" time="0.016" /><testcase classname="tests.unit.test_embeddings_mock" name="test_embed_query_es_estable_entre_instancias" time="0.008" /><testcase classname="tests.unit.test_embeddings_mock" name="test_vector_normalizado" time="0.008" /><testcase classname="tests.unit.test_embeddings_mock" name="test_vector_tiene_la_dimension_declarada" time="0.008" /><testcase classname="tests.unit.test_embeddings_mock" name="test_texto_vacio_devuelve_vector_nulo" time="0.008" /><testcase classname="tests.unit.test_embeddings_mock" name="test_texto_sin_tokens_validos" time="0.008" /><testcase classname="tests.unit.test_embeddings_mock" name="test_acentos_se_normalizan" time="0.008" /><testcase classname="tests.unit.test_embeddings_mock" name="test_factory_devuelve_mock_por_defecto" time="0.011" /><testcase classname="tests.unit.test_embeddings_mock" name="test_factory_acepta_mayusculas" time="0.012" /><testcase classname="tests.unit.test_embeddings_mock" name="test_factory_rechaza_proveedor_desconocido" time="0.011" /><testcase classname="tests.unit.test_fidelity_checker" name="test_claim_con_solapamiento_total_es_si" time="0.008" /><testcase classname="tests.unit.test_fidelity_checker" name="test_claim_sin_solapamiento_significativo_es_parcial" time="0.008" /><testcase classname="tests.unit.test_fidelity_checker" name="test_claim_con_solapamiento_parcial" time="0.010" /><testcase classname="tests.unit.test_fidelity_checker" name="test_claim_entrega_claim_en_evaluacion" time="0.012" /><testcase classname="tests.unit.test_fidelity_checker" name="test_solo_si_da_100" time="0.016" /><testcase classname="tests.unit.test_fidelity_checker" name="test_mezcla_si_y_parcial" time="0.012" /><testcase classname="tests.unit.test_fidelity_checker" name="test_todos_no_da_0" time="0.014" /><testcase classname="tests.unit.test_fidelity_checker" name="test_lista_vacia_devuelve_none_val_005" time="0.006" /><testcase classname="tests.unit.test_fidelity_checker" name="test_redondeo_a_dos_decimales" time="0.008" /><testcase classname="tests.unit.test_fidelity_checker" name="test_servicio_devuelve_score_y_no_soportados" time="0.009" /><testcase classname="tests.unit.test_fidelity_checker" name="test_sin_claims_devuelve_score_none" time="0.010" /><testcase classname="tests.unit.test_fidelity_checker" name="test_determinismo_mismo_input_mismo_output" time="0.009" /><testcase classname="tests.unit.test_generation_cohere" name="test_generate_returns_json_text" time="0.009" /><testcase classname="tests.unit.test_generation_cohere" name="test_generate_passes_correct_parameters" time="0.009" /><testcase classname="tests.unit.test_generation_cohere" name="test_generate_passes_temperature" time="0.009" /><testcase classname="tests.unit.test_generation_cohere" name="test_generate_handles_empty_content" time="1.011" /><testcase classname="tests.unit.test_generation_cohere" name="test_generate_retries_on_failure" time="1.018" /><testcase classname="tests.unit.test_generation_cohere" name="test_generate_fails_after_max_retries" time="1.020" /><testcase classname="tests.unit.test_generation_cohere" name="test_generate_handles_missing_content_attribute" time="1.019" /><testcase classname="tests.unit.test_generation_factory" name="test_factory_returns_mock_by_default" time="0.024" /><testcase classname="tests.unit.test_generation_factory" name="test_factory_returns_gemini_provider" time="0.016" /><testcase classname="tests.unit.test_generation_factory" name="test_factory_returns_cohere_chain_with_fallback" time="0.013" /><testcase classname="tests.unit.test_generation_factory" name="test_factory_cohere_without_gemini_key_returns_single" time="0.016" /><testcase classname="tests.unit.test_generation_factory" name="test_factory_rejects_unknown_provider" time="0.012" /><testcase classname="tests.unit.test_generation_factory" name="test_factory_cohere_requires_api_key" time="0.012" /><testcase classname="tests.unit.test_generation_factory" name="test_factory_gemini_requires_api_key" time="0.023" /><testcase classname="tests.unit.test_generation_failover" name="test_primary_succeeds_no_backup_called" time="0.009" /><testcase classname="tests.unit.test_generation_failover" name="test_primary_fails_backup_succeeds" time="0.010" /><testcase classname="tests.unit.test_generation_failover" name="test_both_fail_raises_error" time="0.012" /><testcase classname="tests.unit.test_generation_failover" name="test_single_provider_no_backup" time="0.011" /><testcase classname="tests.unit.test_generation_failover" name="test_primary_transient_failure_then_backup" time="0.009" /><testcase classname="tests.unit.test_generation_failover" name="test_logs_warning_on_primary_failure" time="0.011" /><testcase classname="tests.unit.test_ingestion" name="test_validate_size_ok" time="0.013" /><testcase classname="tests.unit.test_ingestion" name="test_validate_size_empty" time="0.011" /><testcase classname="tests.unit.test_ingestion" name="test_validate_size_exceeds_limit" time="0.015" /><testcase classname="tests.unit.test_ingestion" name="test_detect_type[a.pdf-pdf]" time="0.011" /><testcase classname="tests.unit.test_ingestion" name="test_detect_type[INFORME.PDF-pdf]" time="0.011" /><testcase classname="tests.unit.test_ingestion" name="test_detect_type[notas.md-md]" time="0.012" /><testcase classname="tests.unit.test_ingestion" name="test_detect_type[notas.markdown-md]" time="0.011" /><testcase classname="tests.unit.test_ingestion" name="test_detect_type[texto.txt-txt]" time="0.011" /><testcase classname="tests.unit.test_ingestion" name="test_detect_type[C:\\docs\\texto.TXT-txt]" time="0.013" /><testcase classname="tests.unit.test_ingestion" name="test_detect_type_rejects_unsupported[a.docx]" time="0.013" /><testcase classname="tests.unit.test_ingestion" name="test_detect_type_rejects_unsupported[sinextension]" time="0.011" /><testcase classname="tests.unit.test_ingestion" name="test_detect_type_rejects_unsupported[]" time="0.012" /><testcase classname="tests.unit.test_ingestion" name="test_detect_type_rejects_unsupported[   ]" time="0.011" /><testcase classname="tests.unit.test_ingestion" name="test_detect_type_rejects_unsupported[archivo.exe]" time="0.012" /><testcase classname="tests.unit.test_ingestion" name="test_display_name_strips_paths" time="0.011" /><testcase classname="tests.unit.test_ingestion" name="test_validate_signature_pdf" time="0.012" /><testcase classname="tests.unit.test_ingestion" name="test_txt_utf8" time="0.011" /><testcase classname="tests.unit.test_ingestion" name="test_txt_utf8_with_bom_is_decoded_without_bom" time="0.012" /><testcase classname="tests.unit.test_ingestion" name="test_txt_windows_1252_is_accepted" time="0.011" /><testcase classname="tests.unit.test_ingestion" name="test_txt_binary_rejected" time="0.012" /><testcase classname="tests.unit.test_ingestion" name="test_txt_undecodable_rejected" time="0.011" /><testcase classname="tests.unit.test_ingestion" name="test_txt_blank_rejected" time="0.012" /><testcase classname="tests.unit.test_ingestion" name="test_markdown_ok_and_blank" time="0.012" /><testcase classname="tests.unit.test_ingestion" name="test_pdf_extracts_text_per_page" time="0.015" /><testcase classname="tests.unit.test_ingestion" name="test_pdf_without_text_is_scanned_error" time="0.015" /><testcase classname="tests.unit.test_ingestion" name="test_pdf_corrupt_is_invalid_file" time="0.013" /><testcase classname="tests.unit.test_ingestion" name="test_pdf_with_password_gives_clear_error" time="0.019" /><testcase classname="tests.unit.test_ingestion" name="test_router_txt" time="0.016" /><testcase classname="tests.unit.test_ingestion" name="test_router_document_ids_are_unique" time="0.016" /><testcase classname="tests.unit.test_ingestion" name="test_router_pdf_warns_about_pages_without_text" time="0.020" /><testcase classname="tests.unit.test_ingestion" name="test_router_rejects_unsupported_and_fake_pdf" time="0.016" /><testcase classname="tests.unit.test_mock_adapter" name="test_chunks_used_is_fixed_at_three" time="0.013" /><testcase classname="tests.unit.test_mock_adapter" name="test_content_cites_real_chunks_and_flags_mock_mode" time="0.012" /><testcase classname="tests.unit.test_mock_adapter" name="test_long_excerpts_are_truncated" time="0.013" /><testcase classname="tests.unit.test_output_schema" name="test_full_instance_is_valid_and_serializable" time="0.013" /><testcase classname="tests.unit.test_output_schema" name="test_optional_fields_can_be_missing" time="0.020" /><testcase classname="tests.unit.test_output_schema" name="test_score_out_of_range_is_rejected[-0.1]" time="0.006" /><testcase classname="tests.unit.test_output_schema" name="test_score_out_of_range_is_rejected[1.5]" time="0.006" /><testcase classname="tests.unit.test_output_schema" name="test_score_boundaries_are_valid[0.0]" time="0.006" /><testcase classname="tests.unit.test_output_schema" name="test_score_boundaries_are_valid[1.0]" time="0.006" /><testcase classname="tests.unit.test_output_schema" name="test_score_boundaries_are_valid[None]" time="0.006" /><testcase classname="tests.unit.test_pedagogical_eval" name="test_devuelve_claves_esperadas" time="0.007" /><testcase classname="tests.unit.test_pedagogical_eval" name="test_conceptos_clave_no_es_lista_vacia" time="0.006" /><testcase classname="tests.unit.test_pedagogical_eval" name="test_prerrequisitos_lista_vacia" time="0.006" /><testcase classname="tests.unit.test_pedagogical_eval" name="test_dificultad_estandar" time="0.007" /><testcase classname="tests.unit.test_processing" name="test_chunk_valid_and_serializable" time="0.006" /><testcase classname="tests.unit.test_processing" name="test_chunk_rejects_empty_text" time="0.006" /><testcase classname="tests.unit.test_processing" name="test_chunk_rejects_invalid_positions[5-5]" time="0.007" /><testcase classname="tests.unit.test_processing" name="test_chunk_rejects_invalid_positions[7-3]" time="0.007" /><testcase classname="tests.unit.test_processing" name="test_chunk_rejects_invalid_positions[-1-4]" time="0.007" /><testcase classname="tests.unit.test_processing" name="test_clean_text_preserves_markdown_indentation" time="0.006" /><testcase classname="tests.unit.test_processing" name="test_clean_text_normalizes_whitespace_and_control_chars" time="0.006" /><testcase classname="tests.unit.test_processing" name="test_clean_text_empty" time="0.007" /><testcase classname="tests.unit.test_processing" name="test_clean_pdf_pages_removes_repeated_headers_and_page_numbers" time="0.007" /><testcase classname="tests.unit.test_processing" name="test_clean_pdf_pages_drops_pages_left_empty" time="0.006" /><testcase classname="tests.unit.test_processing" name="test_prepare_document_text_pdf_keeps_pages_inside_text" time="0.007" /><testcase classname="tests.unit.test_processing" name="test_prepare_document_text_plain" time="0.006" /><testcase classname="tests.unit.test_processing" name="test_prepare_document_text_rejects_empty_result" time="0.006" /><testcase classname="tests.unit.test_processing" name="test_chunk_text_empty_returns_empty_list" time="0.006" /><testcase classname="tests.unit.test_processing" name="test_chunk_text_short_text_is_one_chunk" time="0.010" /><testcase classname="tests.unit.test_processing" name="test_chunk_text_long_text_has_valid_offsets_and_overlap" time="0.012" /><testcase classname="tests.unit.test_processing" name="test_chunk_text_handles_repeated_text" time="0.012" /><testcase classname="tests.unit.test_processing" name="test_chunk_text_is_deterministic" time="0.024" /><testcase classname="tests.unit.test_processing" name="test_chunk_text_assigns_markdown_sections" time="0.013" /><testcase classname="tests.unit.test_processing" name="test_chunk_text_assigns_pdf_pages" time="0.011" /><testcase classname="tests.unit.test_processing" name="test_chunk_text_rejects_too_large_documents" time="0.010" /><testcase classname="tests.unit.test_profiles" name="test_todo_perfil_tiene_intro" time="0.007" /><testcase classname="tests.unit.test_profiles" name="test_todo_formato_tiene_titulo" time="0.007" /><testcase classname="tests.unit.test_profiles" name="test_intros_no_tienen_claves_sobrantes" time="0.007" /><testcase classname="tests.unit.test_profiles" name="test_titulos_no_tienen_claves_sobrantes" time="0.007" /><testcase classname="tests.unit.test_profiles" name="test_conceptos_clave_es_determinista" time="0.007" /><testcase classname="tests.unit.test_profiles" name="test_conceptos_clave_excluye_stopwords" time="0.015" /><testcase classname="tests.unit.test_profiles" name="test_conceptos_clave_prioriza_frecuencia" time="0.007" /><testcase classname="tests.unit.test_rag_context_builder" name="test_lista_vacia_lanza_no_context" time="0.014" /><testcase classname="tests.unit.test_rag_context_builder" name="test_todos_por_debajo_del_umbral_lanza_no_context" time="0.016" /><testcase classname="tests.unit.test_rag_context_builder" name="test_el_mensaje_de_error_menciona_no_context" time="0.013" /><testcase classname="tests.unit.test_rag_context_builder" name="test_un_match_valido_produce_contexto_con_referencia_y_texto" time="0.010" /><testcase classname="tests.unit.test_rag_context_builder" name="test_referencia_incluye_la_pagina_cuando_existe" time="0.010" /><testcase classname="tests.unit.test_rag_context_builder" name="test_referencia_omite_la_pagina_cuando_es_none" time="0.009" /><testcase classname="tests.unit.test_rag_context_builder" name="test_varios_matches_se_unen_con_linea_en_blanco" time="0.011" /><testcase classname="tests.unit.test_rag_context_builder" name="test_los_matches_bajo_umbral_se_descartan_aunque_haya_otros_validos" time="0.010" /><testcase classname="tests.unit.test_rag_context_builder" name="test_score_igual_al_umbral_se_incluye" time="0.011" /><testcase classname="tests.unit.test_rag_retrieval" name="test_devuelve_lo_que_devuelve_el_store" time="0.010" /><testcase classname="tests.unit.test_rag_retrieval" name="test_reenvia_el_doc_id_al_store" time="0.010" /><testcase classname="tests.unit.test_rag_retrieval" name="test_usa_retrieval_top_k_de_la_configuracion" time="0.010" /><testcase classname="tests.unit.test_rag_retrieval" name="test_query_combina_perfil_nicho_y_tema" time="0.010" /><testcase classname="tests.unit.test_rag_retrieval" name="test_query_sin_tema_usa_perfil_y_nicho" time="0.010" /><testcase classname="tests.unit.test_rag_retrieval" name="test_query_omite_las_partes_nulas" time="0.010" /><testcase classname="tests.unit.test_rag_retrieval" name="test_query_sin_datos_usa_general" time="0.010" /><testcase classname="tests.unit.test_rag_retrieval" name="test_el_vector_del_embedder_llega_al_store" time="0.010" /><testcase classname="tests.unit.test_rag_retrieval" name="test_retrieval_end_to_end_con_mock_y_memoria" time="0.010" /><testcase classname="tests.unit.test_rag_retrieval" name="test_fallo_del_store_se_convierte_en_vectorstore_error" time="0.010" /><testcase classname="tests.unit.test_storage" name="test_build_object_name_follows_dt07" time="0.006" /><testcase classname="tests.unit.test_storage" name="test_sanitize_filename[../../etc/passwd-passwd]" time="0.007" /><testcase classname="tests.unit.test_storage" name="test_sanitize_filename[..\\..\\x.txt-x.txt]" time="0.008" /><testcase classname="tests.unit.test_storage" name="test_sanitize_filename[.oculto-oculto]" time="0.007" /><testcase classname="tests.unit.test_storage" name="test_sanitize_filename[-archivo]" time="0.007" /><testcase classname="tests.unit.test_storage" name="test_sanitize_filename[informe final (v2).pdf-informe_final_v2_.pdf]" time="0.007" /><testcase classname="tests.unit.test_storage" name="test_mock_client_upload_and_exists" time="0.012" /><testcase classname="tests.unit.test_storage" name="test_mock_client_blocks_path_traversal[../fuera.txt]" time="0.022" /><testcase classname="tests.unit.test_storage" name="test_mock_client_blocks_path_traversal[a/../../fuera.txt]" time="0.008" /><testcase classname="tests.unit.test_storage" name="test_upload_original_uses_naming_and_content_type" time="0.012" /><testcase classname="tests.unit.test_storage" name="test_upload_result_json" time="0.021" /><testcase classname="tests.unit.test_storage" name="test_verify_upload_never_raises" time="0.012" /><testcase classname="tests.unit.test_storage" name="test_upload_fails_when_object_cannot_be_verified" time="0.012" /><testcase classname="tests.unit.test_storage" name="test_upload_propagates_storage_errors" time="0.010" /><testcase classname="tests.unit.test_storage" name="test_factory_returns_mock_by_default" time="0.015" /><testcase classname="tests.unit.test_storage" name="test_factory_rejects_unknown_provider" time="0.011" /><testcase classname="tests.unit.test_storage" name="test_list_objects_prefix_and_pagination" time="0.048" /><testcase classname="tests.unit.test_storage" name="test_list_objects_empty_prefix" time="0.009" /><testcase classname="tests.unit.test_storage" name="test_mock_client_protocol_completeness" time="0.007" /><testcase classname="tests.unit.test_ui_api_client" name="test_ingest_returns_json_on_success" time="0.008" /><testcase classname="tests.unit.test_ui_api_client" name="test_api_error_payload_is_mapped" time="0.007" /><testcase classname="tests.unit.test_ui_api_client" name="test_non_json_error_becomes_internal_error" time="0.007" /><testcase classname="tests.unit.test_ui_api_client" name="test_unreachable_api" time="0.007" /><testcase classname="tests.unit.test_ui_api_client" name="test_request_adapt_defaults_empty_niche_to_general" time="0.007" /><testcase classname="tests.unit.test_ui_api_client" name="test_health_true_when_ok" time="0.007" /><testcase classname="tests.unit.test_ui_api_client" name="test_pending_poll_returns_status" time="0.006" /><testcase classname="tests.unit.test_vectorstore_chroma" name="test_chroma_add_y_query" time="3.240" /><testcase classname="tests.unit.test_vectorstore_chroma" name="test_chroma_filtra_por_doc_id" time="0.457" /><testcase classname="tests.unit.test_vectorstore_chroma" name="test_chroma_count" time="0.296" /><testcase classname="tests.unit.test_vectorstore_chroma" name="test_chroma_persistencia_entre_instancias" time="0.326" /><testcase classname="tests.unit.test_vectorstore_chroma" name="test_chroma_coleccion_segregada_por_dimensiones" time="0.405" /><testcase classname="tests.unit.test_vectorstore_chroma" name="test_chroma_upsert_reindexa_sin_error" time="0.261" /><testcase classname="tests.unit.test_vectorstore_memory" name="test_query_devuelve_los_top_k_mas_similares" time="0.008" /><testcase classname="tests.unit.test_vectorstore_memory" name="test_vector_identico_da_score_uno" time="0.007" /><testcase classname="tests.unit.test_vectorstore_memory" name="test_filtro_por_doc_id_excluye_otros_documentos" time="0.007" /><testcase classname="tests.unit.test_vectorstore_memory" name="test_query_sin_filtro_mezcla_documentos" time="0.007" /><testcase classname="tests.unit.test_vectorstore_memory" name="test_query_en_store_vacio_devuelve_lista_vacia" time="0.016" /><testcase classname="tests.unit.test_vectorstore_memory" name="test_query_con_doc_id_inexistente_devuelve_lista_vacia" time="0.007" /><testcase classname="tests.unit.test_vectorstore_memory" name="test_la_page_se_propaga_desde_la_metadata" time="0.007" /><testcase classname="tests.unit.test_vectorstore_memory" name="test_add_sobrescribe_el_mismo_chunk_id" time="0.007" /><testcase classname="tests.unit.test_vectorstore_memory" name="test_count_total_y_por_documento" time="0.007" /><testcase classname="tests.unit.test_vectorstore_memory" name="test_count_de_documento_no_indexado_es_cero" time="0.008" /><testcase classname="tests.unit.test_vectorstore_memory" name="test_factory_devuelve_memory_por_defecto" time="0.010" /><testcase classname="tests.unit.test_vectorstore_memory" name="test_factory_acepta_mayusculas" time="0.010" /><testcase classname="tests.unit.test_vectorstore_memory" name="test_factory_es_singleton" time="0.010" /><testcase classname="tests.unit.test_vectorstore_memory" name="test_factory_rechaza_proveedor_desconocido" time="0.011" /><testcase classname="tests.unit.test_vectorstore_memory" name="test_factory_chroma_implementado" time="0.118" /><testcase classname="tests.unit.test_vectorstore_search" name="test_delega_a_store_query_con_los_argumentos" time="0.011" /><testcase classname="tests.unit.test_vectorstore_search" name="test_devuelve_match_que_supera_el_umbral" time="0.011" /><testcase classname="tests.unit.test_vectorstore_search" name="test_filtra_los_scores_bajo_el_umbral" time="0.010" /><testcase classname="tests.unit.test_vectorstore_search" name="test_un_score_justo_en_el_umbral_se_mantiene" time="0.010" /><testcase classname="tests.unit.test_vectorstore_search" name="test_si_todo_queda_bajo_el_umbral_devuelve_vacio" time="0.017" /><testcase classname="tests.unit.test_vectorstore_search" name="test_store_que_devuelve_none_se_normaliza_a_lista_vacia" time="0.011" /><testcase classname="tests.unit.test_vectorstore_search" name="test_store_vacio_devuelve_lista_vacia" time="0.011" /><testcase classname="tests.unit.test_vectorstore_search" name="test_fallo_del_store_se_convierte_en_vectorstore_error" time="0.007" /><testcase classname="tests.unit.test_vectorstore_search" name="test_fallo_del_store_conserva_la_causa" time="0.015" /><testcase classname="tests.unit.test_vectorstore_search" name="test_error_de_dominio_del_store_no_se_re_envelopa" time="0.008" /><testcase classname="tests.unit.test_vectorstore_search" name="test_otro_nueva_mente_error_se_propaga_tal_cual" time="0.007" /><testcase classname="tests.unit.test_vectorstore_search" name="test_end_to_end_con_store_en_memoria" time="0.011" /></testsuite></testsuites>
