@@ -1,7 +1,7 @@
 [project]
 name = "nuevamente-backend"
 version = "0.1.0"
-description = "Backend de NuevaMente — ingesta de documentos y API (RAG y LLM pendientes)"
+description = "Backend de NuevaMente — ingesta, RAG y adaptación con fallback seguro a mock"
 requires-python = ">=3.11"
 
 [tool.ruff]
