@@ -1,0 +1,331 @@
+{
+  "name": "webhook-nuevamente-v2 copy",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "64f65a89-f320-44f7-a881-09a216dcd6d2",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "f75fdf6d-3b48-4ef5-ad74-8e650ea10df2",
+      "name": "Webhook",
+      "webhookId": "64f65a89-f320-44f7-a881-09a216dcd6d2"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://3.235.99.191:8000/ingest",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "parameterType": "formBinaryData",
+              "name": "file",
+              "inputDataFieldName": "file"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        208,
+        0
+      ],
+      "id": "9a6b0ac5-d78c-4618-bbf5-61b314369329",
+      "name": "Ingest Document"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://3.235.99.191:8000/adapt",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "document_id",
+              "value": "={{ $('Ingest Document').item.json.document_id }}"
+            },
+            {
+              "name": "perfil",
+              "value": "={{ $('Webhook').item.json.body.perfil }}"
+            },
+            {
+              "name": "formato",
+              "value": "={{ $('Webhook').item.json.body.formato }}"
+            },
+            {
+              "name": "nicho",
+              "value": "={{ $('Webhook').item.json.body.nicho || 'General' }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        416,
+        0
+      ],
+      "id": "fa43c3e5-d0a6-4005-8d30-9c416399d52f",
+      "name": "Request Adaptation"
+    },
+    {
+      "parameters": {
+        "amount": 3
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        624,
+        0
+      ],
+      "id": "72e53bfd-2974-46f3-a926-ec8458e3c653",
+      "name": "Wait 3 seconds",
+      "webhookId": "e66fae22-cd93-4d81-ac88-8c3a72d0f74c"
+    },
+    {
+      "parameters": {
+        "url": "=http://3.235.99.191:8000/adapt/{{ $('Request Adaptation').item.json.job_id }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        832,
+        0
+      ],
+      "id": "d931b563-e28a-4380-8d39-57790420c066",
+      "name": "Check Job Status"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "44848e1f-b59a-4825-b355-b69319b7c3a4",
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "PROCESSING",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            },
+            {
+              "id": "c297f98e-35e1-4ea1-9c93-96540180878a",
+              "leftValue": "={{ $json.status }}",
+              "rightValue": "QUEUED",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        992,
+        176
+      ],
+      "id": "0c41c9e6-da1d-44ff-992e-e9846b1b62f1",
+      "name": "Is Job Complete?"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "0777b0ef-fd52-4dd1-bfc3-8abb2ee47ed1",
+              "leftValue": "={{ $json.evaluacion_calidad.fidelidad_score ?? 0 }}",
+              "rightValue": 0.9,
+              "operator": {
+                "type": "number",
+                "operation": "gte",
+                "name": "filter.operator.gte"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1216,
+        240
+      ],
+      "id": "68286540-d581-42d5-8ae1-5bcb5a08e388",
+      "name": "Check Fidelity Score"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ {\n  status: 'success',\n  message: 'Contenido educativo generado exitosamente',\n  data: $json,\n  metadata: {\n    job_id: $('Request Adaptation').item.json.job_id,\n    document_id: $('Ingest Document').item.json.document_id\n  }\n} }}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        1456,
+        144
+      ],
+      "id": "68e4ccb2-706a-4b37-8a6b-900cdc6d7276",
+      "name": "Respond Success"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ {\n  error: {\n    code: 'FIDELIDAD_BAJA',\n    message: 'El contenido generado no cumple con el umbral de fidelidad requerido (>= 0.9).',\n    score_obtenido: $json.evaluacion_calidad.fidelidad_score ?? 0,\n    umbral_requerido: 0.9\n  }\n} }}",
+        "options": {
+          "responseCode": 400
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [
+        1456,
+        320
+      ],
+      "id": "223ecaa9-ed10-4ae6-bdeb-b83e799a3670",
+      "name": "Respond Fidelity Error"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Ingest Document",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ingest Document": {
+      "main": [
+        [
+          {
+            "node": "Request Adaptation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Request Adaptation": {
+      "main": [
+        [
+          {
+            "node": "Wait 3 seconds",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait 3 seconds": {
+      "main": [
+        [
+          {
+            "node": "Check Job Status",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Job Status": {
+      "main": [
+        [
+          {
+            "node": "Is Job Complete?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Job Complete?": {
+      "main": [
+        [
+          {
+            "node": "Wait 3 seconds",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Check Fidelity Score",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Fidelity Score": {
+      "main": [
+        [
+          {
+            "node": "Respond Success",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond Fidelity Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "bbec0492-f1b1-4958-a891-7dbb25010985",
+  "meta": {
+    "instanceId": "52d043ee48a83aeae1168a0fc0796156d1e8d8944d2fe04b963998fba90d25d4"
+  },
+  "nodeGroups": [],
+  "id": "9dEbM102uGg1f7JT",
+  "tags": []
+}
