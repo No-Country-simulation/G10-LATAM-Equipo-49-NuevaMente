@@ -1,22 +1,26 @@
 """Test de integración: fallback a mock cuando todos los proveedores LLM fallan."""
-import os
-
 import pytest
 from fastapi.testclient import TestClient
 
 from src.api.main import app
+from src.core.config import get_settings
+from src.generation.factory import get_llm_provider
 
 
 @pytest.fixture(autouse=True)
-def mock_env():
+def mock_env(monkeypatch: pytest.MonkeyPatch):
     """Configura mock providers para tests deterministas, pero permite LLM_PROVIDER=cohere."""
-    os.environ["LLM_PROVIDER"] = "cohere"
-    os.environ["COHERE_API_KEY"] = "test-cohere"
-    os.environ["GEMINI_API_KEY"] = "test-gemini"
-    os.environ["EMBEDDING_PROVIDER"] = "mock"
-    os.environ["VECTORSTORE_PROVIDER"] = "memory"
-    os.environ["STORAGE_PROVIDER"] = "mock"
+    monkeypatch.setenv("LLM_PROVIDER", "cohere")
+    monkeypatch.setenv("COHERE_API_KEY", "test-cohere")
+    monkeypatch.setenv("GEMINI_API_KEY", "test-gemini")
+    monkeypatch.setenv("EMBEDDING_PROVIDER", "mock")
+    monkeypatch.setenv("VECTORSTORE_PROVIDER", "memory")
+    monkeypatch.setenv("STORAGE_PROVIDER", "mock")
+    get_settings.cache_clear()
+    get_llm_provider.cache_clear()
     yield
+    get_settings.cache_clear()
+    get_llm_provider.cache_clear()
 
 
 def test_full_flow_fallback_to_mock_when_llm_fails():

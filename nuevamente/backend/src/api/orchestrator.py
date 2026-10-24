@@ -19,6 +19,7 @@ from src.core.exceptions import (
     DocumentNotFoundError,
     InvalidFileError,
     InvalidRequestError,
+    LLMProviderError,
     NoContextError,
     NuevaMenteError,
     StorageError,
@@ -296,6 +297,8 @@ class PipelineOrchestrator:
             content = GenerationOrchestrator().generate_content(
                 gen_request, contexto, provider
             )
+            if content is None or not content.cuerpo.strip():
+                raise LLMProviderError("El generador devolvió contenido inválido.")
         except Exception as exc:
             log.warning("llm_generation_failed_fallback_to_mock", error=str(exc))
             # AUD-020: se reutilizan los chunks reales (via DB), sin `_MockChunk`.
