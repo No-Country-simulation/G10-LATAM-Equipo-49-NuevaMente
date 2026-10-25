@@ -72,13 +72,19 @@ def build_generation_prompt(
     raw = load_prompt("generacion_v1.txt")
     system_prompt, user_template = parse_generation_prompt(raw)
 
-    user_prompt = user_template.format(
-        contexto=contexto,
-        perfil=perfil,
-        formato=formato,
-        nicho=nicho,
-        nivel=nivel,
-    )
+    values = {
+        "contexto": contexto,
+        "perfil": perfil,
+        "formato": formato,
+        "nicho": nicho,
+        "nivel": nivel,
+    }
+    # CORRECCIÓN 2026-10-25: la parte SYSTEM también contiene {perfil}, {formato},
+    # {nicho} y {nivel} (y las llaves del JSON escapadas como {{ }}). Antes solo se
+    # formateaba la parte USER, así que el modelo leía literalmente
+    # "FORMATO: {formato}" y no podía aplicar la estructura de cada formato.
+    system_prompt = system_prompt.format(**values)
+    user_prompt = user_template.format(**values)
 
     return system_prompt, user_prompt
 
