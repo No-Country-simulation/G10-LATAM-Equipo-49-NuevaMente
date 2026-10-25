@@ -1,0 +1,630 @@
+diff --git a/docker-compose.yml b/docker-compose.yml
+index 7aa7560..9262086 100644
+--- a/docker-compose.yml
++++ b/docker-compose.yml
+@@ -4,6 +4,8 @@ services:
+       context: .
+       dockerfile: Dockerfile.backend
+     container_name: nuevamente-backend
++    env_file:
++      - .env
+     environment:
+       - STORAGE_PROVIDER=oci
+       - OCI_CONFIG_FILE=/root/.oci/config
+@@ -35,9 +37,12 @@ services:
+       context: .
+       dockerfile: Dockerfile.ui
+     container_name: nuevamente-ui
++    env_file:
++      - .env
+     environment:
+       - API_URL=http://backend:8000
+       - PYTHONUNBUFFERED=1
++      - N8N_WEBHOOK_URL=${N8N_WEBHOOK_URL:-}
+     volumes:
+       - ./nuevamente/data:/app/data
+       - ~/.oci:/root/.oci:ro
+diff --git a/nuevamente/.env.example b/nuevamente/.env.example
+index 73968f4..f3f677f 100644
+--- a/nuevamente/.env.example
++++ b/nuevamente/.env.example
+@@ -84,9 +84,14 @@ MOCK_STORAGE_DIR=./data/mock_oci
+ # OCI Object Storage (DT-07, REQ-18)
+ OCI_CONFIG_FILE=~/.oci/config
+ OCI_PROFILE=DEFAULT
+-OCI_NAMESPACE=axkf02paerjf
+-OCI_BUCKET_NAME=bucket-20260921-2152-nuevamente-docs-test
++OCI_NAMESPACE=
++OCI_BUCKET_NAME=
+ 
+ # Persistencia de sesión (DT-08)
+ # Base de datos local
+ DATABASE_URL=sqlite:///./data/sqlite/nuevamente.db
++
++# Integración n8n (DT-10) — orquestación externa opcional
++# URL del webhook de n8n que recibe el archivo + opciones pedagógicas.
++# Si está vacía, la UI usa el flujo directo contra la API backend.
++N8N_WEBHOOK_URL=
+diff --git a/nuevamente/backend/src/api/orchestrator.py b/nuevamente/backend/src/api/orchestrator.py
+index 1d9b2e0..f516d3c 100644
+--- a/nuevamente/backend/src/api/orchestrator.py
++++ b/nuevamente/backend/src/api/orchestrator.py
+@@ -19,6 +19,7 @@ from src.core.exceptions import (
+     DocumentNotFoundError,
+     InvalidFileError,
+     InvalidRequestError,
++    LLMProviderError,
+     NoContextError,
+     NuevaMenteError,
+     StorageError,
+@@ -296,6 +297,8 @@ class PipelineOrchestrator:
+             content = GenerationOrchestrator().generate_content(
+                 gen_request, contexto, provider
+             )
++            if content is None or not content.cuerpo.strip():
++                raise LLMProviderError("El generador devolvió contenido inválido.")
+         except Exception as exc:
+             log.warning("llm_generation_failed_fallback_to_mock", error=str(exc))
+             # AUD-020: se reutilizan los chunks reales (via DB), sin `_MockChunk`.
+diff --git a/nuevamente/backend/src/generation/orchestrator.py b/nuevamente/backend/src/generation/orchestrator.py
+index 68a01b1..53c1160 100644
+--- a/nuevamente/backend/src/generation/orchestrator.py
++++ b/nuevamente/backend/src/generation/orchestrator.py
+@@ -1,16 +1,19 @@
+-"""Orquestador de generación adaptada (BE-GEN-003, GEN-004, GEN-005).
++"""Orquestador de generación adaptada (BE-GEN-003, GEN-004, GEN-005)."""
++import json
+ 
+-Subtareas previstas (Fase 8 del Plan Técnico):
+-    BE-GEN-003a — construir el prompt final combinando contexto + perfil/formato/nicho
+-    BE-GEN-003b — invocar `LLMProvider.generate(...)` con manejo de timeout/retry
+-    BE-GEN-003c — mapear la respuesta del LLM a `ContenidoAdaptado`
+-"""
++from pydantic import ValidationError
++
++from src.core.exceptions import LLMProviderError
+ from src.generation.llm_provider import LLMProvider
+ from src.generation.models import AdaptationRequest, ContenidoAdaptado
++from src.generation.prompt_loader import (
++    build_generation_prompt,
++    strip_markdown_fences,
++)
+ 
+ 
+ class GenerationOrchestrator:
+-    """Implementación futura del flujo de generación adaptada."""
++    """Flujo de generación adaptada con parseo y validación estricta."""
+ 
+     def generate_content(
+         self,
+@@ -18,17 +21,51 @@ class GenerationOrchestrator:
+         contexto: str,
+         provider: LLMProvider,
+     ) -> ContenidoAdaptado:
+-        """Genera contenido adaptado a partir de `contexto` y los
+-        parámetros de `request`.
++        """Genera, parsea y valida contenido adaptado a partir de contexto."""
++        nivel = (
++            getattr(request, "nivel", None)
++            or getattr(request, "nivel_detalle", None)
++            or "estandar"
++        )
++        system_prompt, user_prompt = build_generation_prompt(
++            contexto=contexto,
++            perfil=request.perfil,
++            formato=request.formato,
++            nicho=request.nicho,
++            nivel=nivel,
++        )
++        prompt = f"{system_prompt}\n\n{user_prompt}".strip()
++
++        try:
++            raw_response = provider.generate(prompt)
++        except LLMProviderError:
++            raise
++        except Exception as exc:  # pragma: no cover - defensa adicional
++            raise LLMProviderError(f"Error inesperado del proveedor LLM: {exc}") from exc
++
++        if not raw_response or not raw_response.strip():
++            raise LLMProviderError("El proveedor LLM devolvió una respuesta vacía.")
+ 
+-        Precondición: `contexto` no vacío (garantizado por
+-        `rag.context_builder.build_context`, que lanza `NoContextError`
+-        antes de llegar aquí si no lo está — regla PROMPT-001 "Fallback").
++        cleaned_response = strip_markdown_fences(raw_response)
++        if not cleaned_response:
++            raise LLMProviderError(
++                "La respuesta del proveedor quedó vacía tras limpiar markdown."
++            )
+ 
+-        Lanza:
+-            LLMProviderError: propagada desde `provider.generate(...)`.
++        try:
++            payload = json.loads(cleaned_response)
++        except json.JSONDecodeError as exc:
++            raise LLMProviderError("La respuesta del proveedor no es JSON válido.") from exc
++        if not isinstance(payload, dict):
++            raise LLMProviderError("La respuesta del proveedor debe ser un objeto JSON.")
+ 
+-        Implementación futura.
+-        """
+-        ...
++        try:
++            content = ContenidoAdaptado.model_validate(payload)
++        except ValidationError as exc:
++            raise LLMProviderError(
++                "La respuesta del proveedor no cumple el esquema esperado."
++            ) from exc
+ 
++        if not content.cuerpo.strip():
++            raise LLMProviderError("La respuesta del proveedor tiene `cuerpo` vacío.")
++        return content
+diff --git a/nuevamente/backend/src/generation/prompts/generacion_v1.txt b/nuevamente/backend/src/generation/prompts/generacion_v1.txt
+index 2597e55..143e7ad 100644
+--- a/nuevamente/backend/src/generation/prompts/generacion_v1.txt
++++ b/nuevamente/backend/src/generation/prompts/generacion_v1.txt
+@@ -1,25 +1,61 @@
+ SYSTEM:
+ Eres un redactor pedagógico especializado en transformar documentación técnica
+-en material educativo.
++en material educativo adaptado a diferentes perfiles y formatos de salida.
+ 
+ REGLAS OBLIGATORIAS:
+-1. Utiliza únicamente información contenida en CONTEXTO.
+-2. No agregues conocimiento externo.
+-3. Si una información necesaria no aparece en CONTEXTO, indica explícitamente
+-   que no está disponible.
++1. Utiliza únicamente información contenida en el CONTEXTO proporcionado.
++2. No agregues conocimiento externo al CONTEXTO.
++3. Si una información necesaria no aparece en CONTEXTO, indícalo explícitamente.
+ 4. No inventes números, fechas, nombres, configuraciones o capacidades.
+ 5. Conserva el significado técnico original.
+-6. Adapta solamente vocabulario, profundidad y estructura.
+-7. Respeta el formato solicitado.
+-8. No menciones que eres una IA.
++6. Adapta vocabulario, profundidad y estructura según PERFIL y FORMATO.
++7. No menciones que eres una IA.
++8. El campo "cuerpo" DEBE seguir la estructura específica del FORMATO solicitado.
++
++INSTRUCCIONES DE ESTRUCTURA SEGÚN FORMATO:
++
++Cuando FORMATO sea "Guia Practica Paso a Paso (Tutorial)":
++  Escribe el cuerpo con pasos numerados. Ejemplo:
++  "Paso 1: [accion concreta]. [explicacion]. Paso 2: [accion concreta]. [explicacion]."
++  Usa tono instructivo y directo.
++
++Cuando FORMATO sea "Flashcards de Memorizacion":
++  Escribe el cuerpo con pares pregunta/respuesta separados por " --- ". Genera entre 5 y 10 tarjetas. Ejemplo:
++  "P: [pregunta concisa] | R: [respuesta breve] --- P: [pregunta] | R: [respuesta]"
++
++Cuando FORMATO sea "Quiz Interactivo con Justificaciones":
++  Escribe el cuerpo con preguntas de opcion multiple. Genera entre 4 y 6 preguntas. Ejemplo:
++  "Q1: [pregunta] | a) [op] b) [op] c) [op] d) [op] | Respuesta: [letra] | Justificacion: [explicacion] /// Q2: ..."
++
++Cuando FORMATO sea "Resumen Ejecutivo (TL;DR)":
++  Escribe el cuerpo en exactamente estas 3 secciones, en lenguaje de negocios sin jerga tecnica:
++  "QUE ES: [definicion en 1-2 oraciones]. POR QUE IMPORTA: [impacto o beneficio principal]. ACCION RECOMENDADA: [siguiente paso concreto]."
++  Maximo 150 palabras en total.
++
++Cuando FORMATO sea "Guion de Clase / Video":
++  Escribe el cuerpo dividido en secciones con estas etiquetas:
++  "[INTRODUCCION] [texto] [DESARROLLO] [texto] [EJEMPLO PRACTICO] [texto] [CIERRE Y PUNTOS CLAVE] [texto]"
++  Usa tono conversacional como si hablaras frente a una audiencia.
+ 
+ PERFIL: {perfil}
+ FORMATO: {formato}
+ NICHO: {nicho}
+ NIVEL: {nivel}
+ 
++Responde UNICAMENTE con un JSON valido con esta estructura exacta:
++{{
++  "cuerpo": "string con la estructura del FORMATO indicado (OBLIGATORIO, no vacio)",
++  "conceptos_clave": ["termino1", "termino2"],
++  "prerrequisitos": ["prerequisito1"],
++  "tiempo_estimado_min": null
++}}
++
++Reglas del JSON:
++- "cuerpo": texto principal con estructura segun FORMATO (obligatorio)
++- "conceptos_clave": lista de 3 a 10 terminos clave del contenido (obligatorio)
++- "prerrequisitos": lista de conocimientos previos necesarios, o [] si no aplica
++- "tiempo_estimado_min": entero con minutos estimados de estudio, o null
++- Devuelve SOLO el JSON, sin texto adicional, sin Markdown, sin ```json
++
+ CONTEXTO:
+ {contexto}
+-
+-Responde en JSON válido según el schema GeneratedContent
+-(cuerpo, conceptos_clave, prerrequisitos, tiempo_estimado_min).
+\ No newline at end of file
+diff --git a/nuevamente/backend/src/processing/cleaning.py b/nuevamente/backend/src/processing/cleaning.py
+index 7617fce..bac98a5 100644
+--- a/nuevamente/backend/src/processing/cleaning.py
++++ b/nuevamente/backend/src/processing/cleaning.py
+@@ -30,7 +30,12 @@ def clean_text(raw_text: str) -> str:
+     text = text.replace("\r\n", "\n").replace("\r", "\n")
+ 
+     # Elimina caracteres de control excepto salto de línea y tabulación.
+-    text = "".join(ch for ch in text if ch in ("\n", "\t") or ord(ch) >= 32)
++    # Elimina caracteres de control y surrogates invalidos en UTF-8.
++    text = "".join(
++        ch
++        for ch in text
++        if (ch in ("\n", "\t") or ord(ch) >= 32) and not (0xD800 <= ord(ch) <= 0xDFFF)
++    )
+ 
+     # Colapsa espacios repetidos solo en medio de la línea (conserva la sangría).
+     text = re.sub(r"(?<=\S)[ \t]{2,}", " ", text)
+diff --git a/nuevamente/backend/tests/integration/test_llm_fallback_to_mock.py b/nuevamente/backend/tests/integration/test_llm_fallback_to_mock.py
+index 3cdf6c6..2abb20e 100644
+--- a/nuevamente/backend/tests/integration/test_llm_fallback_to_mock.py
++++ b/nuevamente/backend/tests/integration/test_llm_fallback_to_mock.py
+@@ -1,22 +1,26 @@
+ """Test de integración: fallback a mock cuando todos los proveedores LLM fallan."""
+-import os
+-
+ import pytest
+ from fastapi.testclient import TestClient
+ 
+ from src.api.main import app
++from src.core.config import get_settings
++from src.generation.factory import get_llm_provider
+ 
+ 
+ @pytest.fixture(autouse=True)
+-def mock_env():
++def mock_env(monkeypatch: pytest.MonkeyPatch):
+     """Configura mock providers para tests deterministas, pero permite LLM_PROVIDER=cohere."""
+-    os.environ["LLM_PROVIDER"] = "cohere"
+-    os.environ["COHERE_API_KEY"] = "test-cohere"
+-    os.environ["GEMINI_API_KEY"] = "test-gemini"
+-    os.environ["EMBEDDING_PROVIDER"] = "mock"
+-    os.environ["VECTORSTORE_PROVIDER"] = "memory"
+-    os.environ["STORAGE_PROVIDER"] = "mock"
++    monkeypatch.setenv("LLM_PROVIDER", "cohere")
++    monkeypatch.setenv("COHERE_API_KEY", "test-cohere")
++    monkeypatch.setenv("GEMINI_API_KEY", "test-gemini")
++    monkeypatch.setenv("EMBEDDING_PROVIDER", "mock")
++    monkeypatch.setenv("VECTORSTORE_PROVIDER", "memory")
++    monkeypatch.setenv("STORAGE_PROVIDER", "mock")
++    get_settings.cache_clear()
++    get_llm_provider.cache_clear()
+     yield
++    get_settings.cache_clear()
++    get_llm_provider.cache_clear()
+ 
+ 
+ def test_full_flow_fallback_to_mock_when_llm_fails():
+diff --git a/nuevamente/backend/tests/unit/test_generation_orchestrator.py b/nuevamente/backend/tests/unit/test_generation_orchestrator.py
+new file mode 100644
+index 0000000..841f4b1
+--- /dev/null
++++ b/nuevamente/backend/tests/unit/test_generation_orchestrator.py
+@@ -0,0 +1,120 @@
++"""Tests unitarios del contrato de `GenerationOrchestrator`."""
++
++import pytest
++
++from src.core.exceptions import LLMProviderError
++from src.generation.models import AdaptationRequest
++from src.generation.orchestrator import GenerationOrchestrator
++
++
++class _FakeProvider:
++    def __init__(self, response: str | None = None, exc: Exception | None = None):
++        self._response = response
++        self._exc = exc
++        self.calls: list[str] = []
++
++    def generate(self, prompt: str, temperature: float = 0.3) -> str:
++        self.calls.append(prompt)
++        if self._exc is not None:
++            raise self._exc
++        return self._response or ""
++
++
++def _request() -> AdaptationRequest:
++    return AdaptationRequest(
++        document_id="doc-1",
++        perfil="Principiante / Transición de Carrera",
++        formato="Guía Práctica Paso a Paso (Tutorial)",
++        nicho="Fintech",
++    )
++
++
++def test_generate_content_builds_prompt_and_calls_provider(monkeypatch):
++    captured: dict[str, str] = {}
++
++    def _fake_build(contexto: str, perfil: str, formato: str, nicho: str, nivel: str):
++        captured.update(
++            {
++                "contexto": contexto,
++                "perfil": perfil,
++                "formato": formato,
++                "nicho": nicho,
++                "nivel": nivel,
++            }
++        )
++        return "SYS", "USR"
++
++    monkeypatch.setattr("src.generation.orchestrator.build_generation_prompt", _fake_build)
++    provider = _FakeProvider('{"cuerpo":"ok","conceptos_clave":[],"prerrequisitos":[]}')
++
++    result = GenerationOrchestrator().generate_content(_request(), "contexto de prueba", provider)
++
++    assert captured == {
++        "contexto": "contexto de prueba",
++        "perfil": "Principiante / Transición de Carrera",
++        "formato": "Guía Práctica Paso a Paso (Tutorial)",
++        "nicho": "Fintech",
++        "nivel": "estandar",
++    }
++    assert provider.calls == ["SYS\n\nUSR"]
++    assert result.cuerpo == "ok"
++
++
++def test_generate_content_parses_valid_json():
++    provider = _FakeProvider(
++        '{"cuerpo":"contenido válido","conceptos_clave":["x"],'
++        '"prerrequisitos":[],"tiempo_estimado_min":12}'
++    )
++
++    result = GenerationOrchestrator().generate_content(_request(), "ctx", provider)
++
++    assert result.cuerpo == "contenido válido"
++    assert result.conceptos_clave == ["x"]
++    assert result.tiempo_estimado_min == 12
++
++
++def test_generate_content_parses_json_inside_markdown_fences():
++    provider = _FakeProvider(
++        "```json\n"
++        '{"cuerpo":"desde fence","conceptos_clave":[],"prerrequisitos":[]}'
++        "\n```"
++    )
++
++    result = GenerationOrchestrator().generate_content(_request(), "ctx", provider)
++
++    assert result.cuerpo == "desde fence"
++
++
++def test_generate_content_rejects_empty_response():
++    provider = _FakeProvider("   ")
++
++    with pytest.raises(LLMProviderError, match="respuesta vacía"):
++        GenerationOrchestrator().generate_content(_request(), "ctx", provider)
++
++
++def test_generate_content_rejects_invalid_json():
++    provider = _FakeProvider("{invalido")
++
++    with pytest.raises(LLMProviderError, match="JSON válido"):
++        GenerationOrchestrator().generate_content(_request(), "ctx", provider)
++
++
++def test_generate_content_rejects_invalid_schema():
++    provider = _FakeProvider('{"conceptos_clave":[],"prerrequisitos":[]}')
++
++    with pytest.raises(LLMProviderError, match="esquema"):
++        GenerationOrchestrator().generate_content(_request(), "ctx", provider)
++
++
++def test_generate_content_rejects_empty_cuerpo():
++    provider = _FakeProvider('{"cuerpo":"  ","conceptos_clave":[],"prerrequisitos":[]}')
++
++    with pytest.raises(LLMProviderError, match="cuerpo"):
++        GenerationOrchestrator().generate_content(_request(), "ctx", provider)
++
++
++def test_generate_content_propagates_provider_error():
++    provider = _FakeProvider(exc=LLMProviderError("falló proveedor"))
++
++    with pytest.raises(LLMProviderError, match="falló proveedor"):
++        GenerationOrchestrator().generate_content(_request(), "ctx", provider)
+diff --git a/nuevamente/ui/api_client.py b/nuevamente/ui/api_client.py
+index dcfb7c2..0a761aa 100644
+--- a/nuevamente/ui/api_client.py
++++ b/nuevamente/ui/api_client.py
+@@ -1,3 +1,4 @@
++
+ """Cliente HTTP hacia la API del monolito (COMP-10 → COMP-11).
+ 
+ La interfaz no importa nada del backend: solo habla HTTP. La URL se configura
+@@ -7,10 +8,32 @@ MEJORA AUD-021 — 2026-10-15: el docstring decía "8011" mientras el código y
+ API usan 8000; se corrige el texto para que coincida.
+ """
+ import os
++import threading
++import uuid
+ 
+ import httpx
++import requests
+ 
+ API_URL = os.getenv("API_URL", "http://127.0.0.1:8000").rstrip("/")
++N8N_WEBHOOK_URL = os.getenv("N8N_WEBHOOK_URL", "").rstrip("/")
++
++# *****************************************************************************
++#  INTEGRACIÓN n8n — 2026-10-25
++#  Si `N8N_WEBHOOK_URL` está definida, la adaptación pasa por el flujo de n8n:
++#  se envía UNA petición multipart con el archivo (campo `file`) y `perfil`,
++#  `formato` y `nicho` (el flujo los lee de `body.*`; sin ellos falla al llamar
++#  a /adapt y n8n responde 200 vacío). n8n devuelve el resultado final de forma
++#  síncrona, así que se guarda por un `job_id` sintético y `poll_adapt_result`
++#  lo entrega al instante: las pantallas de la UI no cambian.
++#  Sin `N8N_WEBHOOK_URL` todo funciona como antes (directo a la API).
++# *****************************************************************************
++N8N_WEBHOOK_URL = os.getenv("N8N_WEBHOOK_URL", "").strip()
++N8N_TIMEOUT_SECONDS = float(os.getenv("N8N_TIMEOUT_SECONDS", "180"))
++_N8N_JOB_PREFIX = "n8n-"
++_N8N_CACHE_LIMIT = 20
++_PENDING_FILES: dict[str, tuple[str, bytes, str]] = {}  # document_id -> archivo
++_N8N_RESULTS: dict[str, dict] = {}  # job_id sintético -> resultado
++_CACHE_LOCK = threading.Lock()
+ 
+ _CONTENT_TYPES = {
+     ".pdf": "application/pdf",
+@@ -72,13 +95,68 @@ def ingest(file_bytes: bytes, filename: str) -> dict:
+         "POST", "/ingest", timeout=60.0, files={"file": (filename, file_bytes, content_type)}
+     )
+     _raise_for_error(response)
+-    return response.json()
++    data = response.json()
++    if N8N_WEBHOOK_URL and data.get("document_id"):
++        # n8n necesita el archivo en la solicitud de adaptación: se recuerda.
++        _remember(_PENDING_FILES, data["document_id"], (filename, file_bytes, content_type))
++    return data
++
++
++def _remember(store: dict, key: str, value: object) -> None:
++    """Guarda `value` limitando el tamaño del caché (descarta lo más antiguo)."""
++    with _CACHE_LOCK:
++        store[key] = value
++        while len(store) > _N8N_CACHE_LIMIT:
++            store.pop(next(iter(store)))
++
++
++def _request_adapt_via_n8n(document_id: str, perfil: str, formato: str, nicho: str) -> dict:
++    """Envía archivo + perfil/formato/nicho al webhook de n8n y guarda el resultado."""
++    pending = _PENDING_FILES.get(document_id)
++    if pending is None:
++        raise ApiError(
++            "N8N_FILE_MISSING",
++            "No se encontró el archivo subido para enviarlo a n8n. Vuelve a subirlo.",
++        )
++    filename, file_bytes, content_type = pending
++    try:
++        response = httpx.request(
++            "POST",
++            N8N_WEBHOOK_URL,
++            timeout=N8N_TIMEOUT_SECONDS,
++            files={"file": (filename, file_bytes, content_type)},
++            data={"perfil": perfil, "formato": formato, "nicho": nicho},
++        )
++    except httpx.TimeoutException as exc:
++        raise ApiError("API_TIMEOUT", "n8n tardó demasiado en responder.") from exc
++    except httpx.HTTPError as exc:
++        raise ApiError(
++            "API_UNREACHABLE", "No fue posible conectar con n8n. ¿Está encendido?"
++        ) from exc
++
++    _raise_for_error(response)  # errores del flujo: {"error": {"code", "message"}}
++    try:
++        body = response.json()
++    except ValueError:
++        body = None
++    data = body.get("data") if isinstance(body, dict) else None
++    if not isinstance(data, dict):
++        raise ApiError(
++            "N8N_EMPTY_RESPONSE",
++            "n8n respondió sin resultado. Revisa la ejecución del flujo (Executions).",
++            response.status_code,
++        )
++    job_id = f"{_N8N_JOB_PREFIX}{uuid.uuid4().hex[:12]}"
++    _remember(_N8N_RESULTS, job_id, data)
++    return {"job_id": job_id, "status": "PROCESSING"}
+ 
+ 
+ def request_adapt(
+     document_id: str, perfil: str, formato: str, nicho: str | None
+ ) -> dict:
+     """Llama a `POST /adapt`. Devuelve `{"job_id", "status"}`."""
++    if N8N_WEBHOOK_URL:
++        return _request_adapt_via_n8n(document_id, perfil, formato, nicho or "General")
+     payload = {
+         "document_id": document_id,
+         "perfil": perfil,
+@@ -96,7 +174,94 @@ def poll_adapt_result(job_id: str) -> dict:
+     Devuelve el resultado completo (status SUCCESS/PARTIAL/NO_CONTEXT/ERROR) o,
+     si aún se procesa, `{"job_id", "status": "QUEUED" | "PROCESSING"}`.
+     """
++    if job_id.startswith(_N8N_JOB_PREFIX):
++        result = _N8N_RESULTS.get(job_id)
++        if result is None:
++            raise ApiError("JOB_NOT_FOUND", "No existe el resultado de n8n. Genera de nuevo.", 404)
++        return result
+     response = _request("GET", f"/adapt/{job_id}")
+     _raise_for_error(response)
+     return response.json()
+ 
++
++def notify_n8n(job_id: str, status: str, result: dict | None = None) -> None:
++    """Envía notificación al webhook de n8n (opcional, fire-and-forget).
++
++    No bloquea el flujo principal si n8n está caído o el webhook falla.
++    """
++    if not N8N_WEBHOOK_URL:
++        return
++    payload = {"job_id": job_id, "status": status}
++    if result is not None:
++        payload["result"] = result
++    try:
++        response = httpx.post(N8N_WEBHOOK_URL, json=payload, timeout=10.0)
++        response.raise_for_status()
++    except httpx.HTTPError:
++        # n8n es opcional: no bloquear el flujo principal
++        pass
++
++
++def submit_to_workflow(uploaded_file, perfil: str, formato: str, nicho: str) -> dict:
++    """Envía el archivo y las opciones pedagógicas directamente al webhook de n8n.
++
++    n8n recibe el archivo binario y los parámetros como campos de formulario
++    multipart, maneja el flujo completo de ingesta + adaptación y devuelve
++    el resultado final.
++
++    Args:
++        uploaded_file: objeto UploadedFile de Streamlit (tiene .name, .getvalue(), .type).
++        perfil: perfil destinatario seleccionado por el usuario.
++        formato: formato de salida seleccionado por el usuario.
++        nicho: nicho/sector seleccionado por el usuario.
++
++    Devuelve:
++        dict con el resultado devuelto por el webhook de n8n.
++
++    Lanza:
++        ApiError: si el webhook no responde, devuelve error HTTP, o N8N_WEBHOOK_URL
++            no está configurada.
++    """
++    if not N8N_WEBHOOK_URL:
++        raise ApiError("N8N_NOT_CONFIGURED", "N8N_WEBHOOK_URL no está configurada.")
++
++    # 1. Archivo binario con la clave exacta "file"
++    files = {
++        "file": (uploaded_file.name, uploaded_file.getvalue(), uploaded_file.type)
++    }
++
++    # 2. Opciones pedagógicas como campos de texto del formulario
++    data = {
++        "perfil": perfil,
++        "formato": formato,
++        "nicho": nicho,
++    }
++
++    # 3. POST multipart: files y data por separado (NUNCA json=)
++    try:
++        response = requests.post(N8N_WEBHOOK_URL, files=files, data=data, timeout=300)
++    except requests.Timeout as exc:
++        raise ApiError("API_TIMEOUT", "El workflow de n8n tardó demasiado en responder.") from exc
++    except requests.ConnectionError as exc:
++        raise ApiError(
++            "API_UNREACHABLE",
++            f"No fue posible conectar con el webhook de n8n en {N8N_WEBHOOK_URL}.",
++        ) from exc
++
++    if response.status_code >= 400:
++        try:
++            error = response.json().get("error", {})
++            raise ApiError(
++                error.get("code", "N8N_ERROR"),
++                error.get("message", f"Error del webhook de n8n (HTTP {response.status_code})."),
++                response.status_code,
++            )
++        except (ValueError, AttributeError) as exc:
++            raise ApiError(
++                "N8N_ERROR",
++                f"Respuesta inesperada del webhook de n8n (HTTP {response.status_code}).",
++                response.status_code,
++            ) from exc
++
++    return response.json()
++
