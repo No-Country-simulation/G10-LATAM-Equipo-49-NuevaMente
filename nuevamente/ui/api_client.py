@@ -1,3 +1,4 @@
+
 """Cliente HTTP hacia la API del monolito (COMP-10 → COMP-11).
 
 La interfaz no importa nada del backend: solo habla HTTP. La URL se configura
@@ -7,12 +8,32 @@ MEJORA AUD-021 — 2026-10-15: el docstring decía "8011" mientras el código y 
 API usan 8000; se corrige el texto para que coincida.
 """
 import os
+import threading
+import uuid
 
 import httpx
 import requests
 
 API_URL = os.getenv("API_URL", "http://127.0.0.1:8000").rstrip("/")
 N8N_WEBHOOK_URL = os.getenv("N8N_WEBHOOK_URL", "").rstrip("/")
+
+# *****************************************************************************
+#  INTEGRACIÓN n8n — 2026-10-25
+#  Si `N8N_WEBHOOK_URL` está definida, la adaptación pasa por el flujo de n8n:
+#  se envía UNA petición multipart con el archivo (campo `file`) y `perfil`,
+#  `formato` y `nicho` (el flujo los lee de `body.*`; sin ellos falla al llamar
+#  a /adapt y n8n responde 200 vacío). n8n devuelve el resultado final de forma
+#  síncrona, así que se guarda por un `job_id` sintético y `poll_adapt_result`
+#  lo entrega al instante: las pantallas de la UI no cambian.
+#  Sin `N8N_WEBHOOK_URL` todo funciona como antes (directo a la API).
+# *****************************************************************************
+N8N_WEBHOOK_URL = os.getenv("N8N_WEBHOOK_URL", "").strip()
+N8N_TIMEOUT_SECONDS = float(os.getenv("N8N_TIMEOUT_SECONDS", "180"))
+_N8N_JOB_PREFIX = "n8n-"
+_N8N_CACHE_LIMIT = 20
+_PENDING_FILES: dict[str, tuple[str, bytes, str]] = {}  # document_id -> archivo
+_N8N_RESULTS: dict[str, dict] = {}  # job_id sintético -> resultado
+_CACHE_LOCK = threading.Lock()
 
 _CONTENT_TYPES = {
     ".pdf": "application/pdf",
@@ -74,13 +95,68 @@ def ingest(file_bytes: bytes, filename: str) -> dict:
         "POST", "/ingest", timeout=60.0, files={"file": (filename, file_bytes, content_type)}
     )
     _raise_for_error(response)
-    return response.json()
+    data = response.json()
+    if N8N_WEBHOOK_URL and data.get("document_id"):
+        # n8n necesita el archivo en la solicitud de adaptación: se recuerda.
+        _remember(_PENDING_FILES, data["document_id"], (filename, file_bytes, content_type))
+    return data
+
+
+def _remember(store: dict, key: str, value: object) -> None:
+    """Guarda `value` limitando el tamaño del caché (descarta lo más antiguo)."""
+    with _CACHE_LOCK:
+        store[key] = value
+        while len(store) > _N8N_CACHE_LIMIT:
+            store.pop(next(iter(store)))
+
+
+def _request_adapt_via_n8n(document_id: str, perfil: str, formato: str, nicho: str) -> dict:
+    """Envía archivo + perfil/formato/nicho al webhook de n8n y guarda el resultado."""
+    pending = _PENDING_FILES.get(document_id)
+    if pending is None:
+        raise ApiError(
+            "N8N_FILE_MISSING",
+            "No se encontró el archivo subido para enviarlo a n8n. Vuelve a subirlo.",
+        )
+    filename, file_bytes, content_type = pending
+    try:
+        response = httpx.request(
+            "POST",
+            N8N_WEBHOOK_URL,
+            timeout=N8N_TIMEOUT_SECONDS,
+            files={"file": (filename, file_bytes, content_type)},
+            data={"perfil": perfil, "formato": formato, "nicho": nicho},
+        )
+    except httpx.TimeoutException as exc:
+        raise ApiError("API_TIMEOUT", "n8n tardó demasiado en responder.") from exc
+    except httpx.HTTPError as exc:
+        raise ApiError(
+            "API_UNREACHABLE", "No fue posible conectar con n8n. ¿Está encendido?"
+        ) from exc
+
+    _raise_for_error(response)  # errores del flujo: {"error": {"code", "message"}}
+    try:
+        body = response.json()
+    except ValueError:
+        body = None
+    data = body.get("data") if isinstance(body, dict) else None
+    if not isinstance(data, dict):
+        raise ApiError(
+            "N8N_EMPTY_RESPONSE",
+            "n8n respondió sin resultado. Revisa la ejecución del flujo (Executions).",
+            response.status_code,
+        )
+    job_id = f"{_N8N_JOB_PREFIX}{uuid.uuid4().hex[:12]}"
+    _remember(_N8N_RESULTS, job_id, data)
+    return {"job_id": job_id, "status": "PROCESSING"}
 
 
 def request_adapt(
     document_id: str, perfil: str, formato: str, nicho: str | None
 ) -> dict:
     """Llama a `POST /adapt`. Devuelve `{"job_id", "status"}`."""
+    if N8N_WEBHOOK_URL:
+        return _request_adapt_via_n8n(document_id, perfil, formato, nicho or "General")
     payload = {
         "document_id": document_id,
         "perfil": perfil,
@@ -98,6 +174,11 @@ def poll_adapt_result(job_id: str) -> dict:
     Devuelve el resultado completo (status SUCCESS/PARTIAL/NO_CONTEXT/ERROR) o,
     si aún se procesa, `{"job_id", "status": "QUEUED" | "PROCESSING"}`.
     """
+    if job_id.startswith(_N8N_JOB_PREFIX):
+        result = _N8N_RESULTS.get(job_id)
+        if result is None:
+            raise ApiError("JOB_NOT_FOUND", "No existe el resultado de n8n. Genera de nuevo.", 404)
+        return result
     response = _request("GET", f"/adapt/{job_id}")
     _raise_for_error(response)
     return response.json()
