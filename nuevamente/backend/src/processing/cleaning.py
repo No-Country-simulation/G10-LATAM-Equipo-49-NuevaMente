@@ -30,7 +30,12 @@ def clean_text(raw_text: str) -> str:
     text = text.replace("\r\n", "\n").replace("\r", "\n")
 
     # Elimina caracteres de control excepto salto de línea y tabulación.
-    text = "".join(ch for ch in text if ch in ("\n", "\t") or ord(ch) >= 32)
+    # Elimina caracteres de control y surrogates invalidos en UTF-8.
+    text = "".join(
+        ch
+        for ch in text
+        if (ch in ("\n", "\t") or ord(ch) >= 32) and not (0xD800 <= ord(ch) <= 0xDFFF)
+    )
 
     # Colapsa espacios repetidos solo en medio de la línea (conserva la sangría).
     text = re.sub(r"(?<=\S)[ \t]{2,}", " ", text)

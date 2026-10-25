@@ -4,6 +4,8 @@ services:
       context: .
       dockerfile: Dockerfile.backend
     container_name: nuevamente-backend
+    env_file:
+      - .env
     environment:
       - STORAGE_PROVIDER=oci
       - OCI_CONFIG_FILE=/root/.oci/config
@@ -35,9 +37,12 @@ services:
       context: .
       dockerfile: Dockerfile.ui
     container_name: nuevamente-ui
+    env_file:
+      - .env
     environment:
       - API_URL=http://backend:8000
       - PYTHONUNBUFFERED=1
+      - N8N_WEBHOOK_URL=${N8N_WEBHOOK_URL:-}
     volumes:
       - ./nuevamente/data:/app/data
       - ~/.oci:/root/.oci:ro

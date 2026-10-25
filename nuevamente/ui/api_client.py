@@ -9,8 +9,10 @@ API usan 8000; se corrige el texto para que coincida.
 import os
 
 import httpx
+import requests
 
 API_URL = os.getenv("API_URL", "http://127.0.0.1:8000").rstrip("/")
+N8N_WEBHOOK_URL = os.getenv("N8N_WEBHOOK_URL", "").rstrip("/")
 
 _CONTENT_TYPES = {
     ".pdf": "application/pdf",
@@ -98,5 +100,87 @@ def poll_adapt_result(job_id: str) -> dict:
     """
     response = _request("GET", f"/adapt/{job_id}")
     _raise_for_error(response)
+    return response.json()
+
+
+def notify_n8n(job_id: str, status: str, result: dict | None = None) -> None:
+    """Envía notificación al webhook de n8n (opcional, fire-and-forget).
+
+    No bloquea el flujo principal si n8n está caído o el webhook falla.
+    """
+    if not N8N_WEBHOOK_URL:
+        return
+    payload = {"job_id": job_id, "status": status}
+    if result is not None:
+        payload["result"] = result
+    try:
+        response = httpx.post(N8N_WEBHOOK_URL, json=payload, timeout=10.0)
+        response.raise_for_status()
+    except httpx.HTTPError:
+        # n8n es opcional: no bloquear el flujo principal
+        pass
+
+
+def submit_to_workflow(uploaded_file, perfil: str, formato: str, nicho: str) -> dict:
+    """Envía el archivo y las opciones pedagógicas directamente al webhook de n8n.
+
+    n8n recibe el archivo binario y los parámetros como campos de formulario
+    multipart, maneja el flujo completo de ingesta + adaptación y devuelve
+    el resultado final.
+
+    Args:
+        uploaded_file: objeto UploadedFile de Streamlit (tiene .name, .getvalue(), .type).
+        perfil: perfil destinatario seleccionado por el usuario.
+        formato: formato de salida seleccionado por el usuario.
+        nicho: nicho/sector seleccionado por el usuario.
+
+    Devuelve:
+        dict con el resultado devuelto por el webhook de n8n.
+
+    Lanza:
+        ApiError: si el webhook no responde, devuelve error HTTP, o N8N_WEBHOOK_URL
+            no está configurada.
+    """
+    if not N8N_WEBHOOK_URL:
+        raise ApiError("N8N_NOT_CONFIGURED", "N8N_WEBHOOK_URL no está configurada.")
+
+    # 1. Archivo binario con la clave exacta "file"
+    files = {
+        "file": (uploaded_file.name, uploaded_file.getvalue(), uploaded_file.type)
+    }
+
+    # 2. Opciones pedagógicas como campos de texto del formulario
+    data = {
+        "perfil": perfil,
+        "formato": formato,
+        "nicho": nicho,
+    }
+
+    # 3. POST multipart: files y data por separado (NUNCA json=)
+    try:
+        response = requests.post(N8N_WEBHOOK_URL, files=files, data=data, timeout=300)
+    except requests.Timeout as exc:
+        raise ApiError("API_TIMEOUT", "El workflow de n8n tardó demasiado en responder.") from exc
+    except requests.ConnectionError as exc:
+        raise ApiError(
+            "API_UNREACHABLE",
+            f"No fue posible conectar con el webhook de n8n en {N8N_WEBHOOK_URL}.",
+        ) from exc
+
+    if response.status_code >= 400:
+        try:
+            error = response.json().get("error", {})
+            raise ApiError(
+                error.get("code", "N8N_ERROR"),
+                error.get("message", f"Error del webhook de n8n (HTTP {response.status_code})."),
+                response.status_code,
+            )
+        except (ValueError, AttributeError) as exc:
+            raise ApiError(
+                "N8N_ERROR",
+                f"Respuesta inesperada del webhook de n8n (HTTP {response.status_code}).",
+                response.status_code,
+            ) from exc
+
     return response.json()
 

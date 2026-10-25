@@ -5,6 +5,7 @@ import time
 import streamlit as st
 
 import api_client
+from api_client import notify_n8n
 
 POLL_SECONDS = 1.0
 MIN_PROCESSING_SECONDS = 6.0
@@ -396,6 +397,11 @@ def _loading_fragment() -> None:
     # Procesamiento terminado.
     st.session_state["result"] = result
     st.session_state["loading_progress"] = 100
+
+    # Notificar a n8n (fire-and-forget)
+    job_id = st.session_state.get("job_id")
+    if job_id:
+        notify_n8n(job_id=job_id, status=result.get("status", "UNKNOWN"), result=result)
 
     st.session_state.pop(
         "loading_started_at",
