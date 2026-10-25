@@ -88,6 +88,7 @@ def build_generation_prompt(
 
     return system_prompt, user_prompt
 
+#
 
 def strip_markdown_fences(text: str) -> str:
     """Remueve encuadramientos ```json ... ``` o ``` ... ``` devueltos por LLMs."""
