@@ -7,6 +7,12 @@ services:
     env_file:
       - .env
     environment:
+      # CAMBIO H-06 INICIO — 2026-10-24
+      - LLM_PROVIDER=${LLM_PROVIDER:-cohere}
+      - EMBEDDING_PROVIDER=${EMBEDDING_PROVIDER:-cohere}
+      - COHERE_API_KEY=${COHERE_API_KEY:-}
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      # CAMBIO H-06 FIN — 2026-10-24
       - STORAGE_PROVIDER=oci
       - OCI_CONFIG_FILE=/root/.oci/config
       - OCI_BUCKET_NAME=bucket-20260921-2152-nuevamente-docs-test
